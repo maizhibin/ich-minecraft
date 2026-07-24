@@ -1,11 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createNoise2D } from "simplex-noise";
 import * as THREE from "three";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 import { createGameAudio, type GameAudioState, type GameSound } from "./game-audio";
-import { HeritageWorkshop, type HeritageTrack } from "./heritage-workshop";
+import { HeritageWorkshop } from "./heritage-workshop";
+import {
+  HERITAGE_TRACKS,
+  WORKSHOPS,
+  applyHeritageReward,
+  countCompleted,
+  clearHeritageProgress,
+  getHeritageProgressSnapshot,
+  getServerHeritageProgressSnapshot,
+  loadHeritageProgress,
+  markTrackCompleted,
+  restoreHeritageRewards,
+  subscribeHeritageProgress,
+  type HeritageTrack,
+} from "./heritage";
 
 type BlockType = "grass" | "dirt" | "stone" | "sand" | "wood" | "leaves";
 type Hit = { x: number; y: number; z: number; normal: THREE.Vector3 };
@@ -28,12 +42,7 @@ const EYE_HEIGHT = 1.62;
 const PLAYER_HEIGHT = 1.8;
 const PLAYER_RADIUS = 0.32;
 const REACH = 7;
-const WORKSHOPS: Record<HeritageTrack, { x: number; z: number; label: string; guide: string }> = {
-  joinery: { x: 27.5, z: -5.5, label: "榫卯营造台", guide: "右前方博物馆展厅" },
-  printing: { x: 42.5, z: -5.5, label: "木活字印刷台", guide: "右前方博物馆展厅" },
-  tea: { x: -14.5, z: 6.5, label: "传统制茶工坊", guide: "左前方茶园茶馆" },
-  shadow: { x: -33.5, z: -6.5, label: "皮影戏台", guide: "左前方皮影戏台" },
-};
+// 工坊坐标改由 app/heritage/registry 统一登记，避免与图鉴进度分母脱节
 const FACES = [
   { normal: [1, 0, 0], corners: [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1]] },
   { normal: [-1, 0, 0], corners: [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]] },
@@ -311,12 +320,12 @@ export function VoxelGame() {
   const [nearbyWorkshop, setNearbyWorkshop] = useState<HeritageTrack | null>(null);
   const [interactionNotice, setInteractionNotice] = useState("");
   const [audioState, setAudioState] = useState<GameAudioState>({ enabled: true, status: "idle" });
-  const [heritageCompleted, setHeritageCompleted] = useState<Record<HeritageTrack, boolean>>({
-    joinery: false,
-    printing: false,
-    tea: false,
-    shadow: false,
-  });
+  // 用外部存档快照驱动 UI：SSR/水合用空进度，挂载后切到 localStorage，避免图鉴计数 mismatch
+  const heritageCompleted = useSyncExternalStore(
+    subscribeHeritageProgress,
+    getHeritageProgressSnapshot,
+    getServerHeritageProgressSnapshot,
+  );
 
   const chooseBlock = (index: number) => {
     const next = (index + BLOCKS.length) % BLOCKS.length;
@@ -325,8 +334,17 @@ export function VoxelGame() {
   };
 
   const completeHeritage = (track: HeritageTrack) => {
-    setHeritageCompleted((current) => current[track] ? current : { ...current, [track]: true });
+    const current = getHeritageProgressSnapshot();
+    if (current[track]) return;
+    markTrackCompleted(current, track);
+    // 世界奖励由 Three.js 层监听；重复写入同一坐标是幂等的
     window.dispatchEvent(new CustomEvent("heritage-complete", { detail: track }));
+  };
+
+  /** 清除本机进度并整页刷新，使世界奖励随存档回滚 */
+  const resetHeritageProgress = () => {
+    clearHeritageProgress();
+    window.location.reload();
   };
 
   const closeHeritage = () => {
@@ -502,60 +520,26 @@ export function VoxelGame() {
       if ((z + 1) % CHUNK_SIZE === 0) dirtyChunks.add(chunkKey(cx, cz + 1));
     };
 
-    const applyHeritageReward = (track: HeritageTrack) => {
-      if (track === "joinery") {
-        for (let y = 4; y <= 9; y += 1) {
-          modifications.set(keyOf(8, y, 4), "wood");
-          modifications.set(keyOf(14, y, 4), "wood");
-        }
-        for (let x = 8; x <= 14; x += 1) modifications.set(keyOf(x, 10, 4), "wood");
-        for (let x = 7; x <= 15; x += 1) modifications.set(keyOf(x, 11, 4), "sand");
-        modifications.set(keyOf(9, 9, 4), "wood");
-        modifications.set(keyOf(10, 8, 4), "wood");
-        modifications.set(keyOf(12, 8, 4), "wood");
-        modifications.set(keyOf(13, 9, 4), "wood");
-        markDirtyAt(8, 4);
-        markDirtyAt(14, 4);
-      } else if (track === "printing") {
-        for (let x = 40; x <= 44; x += 1) modifications.set(keyOf(x, 5, 2), "sand");
-        for (let y = 6; y <= 10; y += 1) {
-          modifications.set(keyOf(40, y, 2), "wood");
-          modifications.set(keyOf(44, y, 2), "wood");
-        }
-        for (let x = 40; x <= 44; x += 1) modifications.set(keyOf(x, 11, 2), "wood");
-        for (let x = 41; x <= 43; x += 1)
-          for (let y = 7; y <= 10; y += 1) modifications.set(keyOf(x, y, 2), "stone");
-        markDirtyAt(40, 2);
-        markDirtyAt(44, 2);
-      } else if (track === "tea") {
-        for (let x = -18; x <= -11; x += 1) modifications.set(keyOf(x, 5, 11), "wood");
-        modifications.set(keyOf(-15, 6, 11), "sand");
-        modifications.set(keyOf(-14, 6, 11), "sand");
-        for (let y = 5; y <= 8; y += 1) {
-          modifications.set(keyOf(-20, y, 3), "wood");
-          modifications.set(keyOf(-9, y, 3), "wood");
-        }
-        for (let x = -20; x <= -9; x += 1) modifications.set(keyOf(x, 9, 3), "leaves");
-        markDirtyAt(-20, 3);
-        markDirtyAt(-9, 11);
-      } else {
-        for (let y = 6; y <= 10; y += 1) {
-          modifications.set(keyOf(-37, y, -15), "wood");
-          modifications.set(keyOf(-31, y, -15), "wood");
-        }
-        for (let x = -37; x <= -31; x += 1) modifications.set(keyOf(x, 11, -15), "wood");
-        modifications.set(keyOf(-35, 7, -14), "stone");
-        modifications.set(keyOf(-34, 8, -14), "stone");
-        modifications.set(keyOf(-33, 7, -14), "stone");
-        markDirtyAt(-37, -15);
-        markDirtyAt(-31, -14);
-      }
-    };
-
+    // 奖励写入抽到 heritage/world-rewards，坐标与改前保持一致
     const handleHeritageComplete = (event: Event) => {
-      applyHeritageReward((event as CustomEvent<HeritageTrack>).detail);
+      applyHeritageReward(
+        (event as CustomEvent<HeritageTrack>).detail,
+        (x, y, z, block) => {
+          modifications.set(keyOf(x, y, z), block);
+        },
+        markDirtyAt,
+      );
     };
     window.addEventListener("heritage-complete", handleHeritageComplete);
+
+    // 刷新后按存档重放已完成技艺的世界奖励，再生成首批区块
+    restoreHeritageRewards(
+      loadHeritageProgress(),
+      (x, y, z, block) => {
+        modifications.set(keyOf(x, y, z), block);
+      },
+      markDirtyAt,
+    );
 
     updateDesiredChunks(true);
     const controls = new PointerLockControls(camera, renderer.domElement);
@@ -577,14 +561,16 @@ export function VoxelGame() {
         setHasPlayed(true);
       } else controls.lock();
     };
-    const openHeritagePanel = (track: HeritageTrack = nearbyWorkshopRef.current ?? "joinery") => {
+    // track 可能为 null：CustomEvent 未传 detail 时 detail 是 null（不是 undefined），默认参数不会生效
+    const openHeritagePanel = (track?: HeritageTrack | null) => {
+      const resolved = track ?? nearbyWorkshopRef.current ?? "joinery";
       void gameAudio.start().then((state) => {
         reportAudioState(state);
         if (state.status === "running") gameAudio.play("ui");
       });
       active = false;
       if (controls.isLocked) controls.unlock();
-      setHeritageTrack(track);
+      setHeritageTrack(resolved);
       setHeritageOpen(true);
     };
     const handleHeritageOpen = (event: Event) => {
@@ -942,7 +928,7 @@ export function VoxelGame() {
         onClick={() => window.dispatchEvent(new CustomEvent("heritage-open"))}
       >
         <span>H</span> 非遗图鉴
-        <b>{Object.values(heritageCompleted).filter(Boolean).length}/4</b>
+        <b>{countCompleted(heritageCompleted)}/{HERITAGE_TRACKS.length}</b>
       </button>
       <button
         className="audio-toggle"
@@ -973,7 +959,7 @@ export function VoxelGame() {
         <section className="start-card">
           <span className="eyebrow">{hasPlayed ? "游戏已暂停" : "Simplex · FBM 体素世界"}</span>
           <strong>{hasPlayed ? "暂停探索" : "进入方块世界"}</strong>
-          <small>{hasPlayed ? "点击继续，返回 DTCoder 世界" : "探索博物馆、茶园茶馆与皮影戏台"}</small>
+          <small>{hasPlayed ? "进度已自动保存在本机；点击继续返回世界" : "探索博物馆、茶园茶馆与皮影戏台"}</small>
           {!hasPlayed && (
             <div className="loading-track" aria-label={`世界加载 ${loadProgress}%`}>
               <i style={{ width: `${loadProgress}%` }} /><span>{loadProgress}%</span>
@@ -1022,6 +1008,7 @@ export function VoxelGame() {
         onClose={closeHeritage}
         onSelectTrack={setHeritageTrack}
         onComplete={completeHeritage}
+        onClearProgress={resetHeritageProgress}
       />
     </main>
   );

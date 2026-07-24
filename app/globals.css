@@ -101,10 +101,9 @@ kbd { display: inline-block; min-width: 52px; color: white; font-family: inherit
 .puppet i { position: absolute; display: block; background: #7f291f; border: 2px solid #351511; }
 .puppet-head { top: 22px; left: 31px; width: 30px; height: 36px; border-radius: 45% 55% 40% 45%; }
 .puppet-body { top: 60px; left: 26px; width: 42px; height: 82px; clip-path: polygon(22% 0, 78% 0, 100% 100%, 0 100%); }
-.puppet-arm { top: 69px; width: 14px; height: 75px; transform-origin: 50% 5%; }.puppet-arm.left { left: 13px; transform: rotate(18deg); }.puppet-arm.right { right: 10px; transform: rotate(-24deg); }
-.puppet.articulated .puppet-arm.left { animation: shadow-left-arm 1.8s ease-in-out infinite alternate; }.puppet.articulated .puppet-arm.right { animation: shadow-right-arm 2.1s ease-in-out infinite alternate; }
-@keyframes shadow-left-arm { to { transform: rotate(58deg); } }
-@keyframes shadow-right-arm { to { transform: rotate(-65deg); } }
+.puppet-arm { top: 69px; width: 14px; height: 75px; transform-origin: 50% 5%; }
+.puppet-arm.left { left: 13px; transform: rotate(var(--arm-left, 18deg)); }
+.puppet-arm.right { right: 10px; transform: rotate(var(--arm-right, -24deg)); }
 .shadow-controls { display: grid; gap: 10px; }
 .shadow-controls fieldset { margin: 0; padding: 10px; border: 1px solid #ffffff20; }
 .shadow-controls legend { padding: 0 6px; color: #d6dccb; font-size: 9px; }
@@ -112,14 +111,74 @@ kbd { display: inline-block; min-width: 52px; color: white; font-family: inherit
 .shadow-controls button.selected { border-color: var(--accent); color: var(--accent); }
 .shadow-controls button:disabled { opacity: .3; cursor: not-allowed; }
 .light-control { display: grid; gap: 8px; padding: 10px; border: 1px solid #ffffff20; color: #d6dccb; font-size: 9px; }
-.light-control span { display: flex; justify-content: space-between; }.light-control b { color: var(--accent); }
-.light-control input { width: 100%; accent-color: var(--accent); }.light-control small { color: #ffffff66; font-size: 8px; }
+.light-control span { display: flex; justify-content: space-between; }
+.light-control b { color: var(--accent); }
+.light-control input { width: 100%; accent-color: var(--accent); }
+.light-control small { color: #ffffff66; font-size: 8px; }
 .shadow-timeline { display: flex; min-height: 32px; gap: 4px; margin-bottom: 7px; padding: 5px; border: 1px dashed #ffffff27; }
 .shadow-timeline span { flex: 1; padding: 6px 4px; background: #e6ff4a17; color: #dfeaaf; text-align: center; font-size: 8px; }
-.shadow-controls .reset { color: #ffffff78; }
 .shadow-controls .shadow-perform { width: 100%; margin: 0; padding: 12px; border-color: var(--accent); background: var(--accent); color: #151912; font-weight: 700; }
 .heritage-source { grid-column: 1 / -1; grid-row: 4; padding: 12px 26px; border-top: 1px solid #ffffff1c; color: #ffffff60; font-size: 8px; }
+.heritage-source-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .heritage-source a { margin-left: 5px; color: #bcd768; }
+.heritage-clear { padding: 7px 10px; border: 1px solid #ffffff2a; background: #ffffff0a; color: #d8dfcb; font-size: 8px; cursor: pointer; }
+.heritage-clear:hover { border-color: #e6a06a; color: #f0c9a8; }
+
+/* —— 加厚工坊通用 —— */
+.heritage-dialog { width: min(920px, calc(100% - 28px)); max-height: min(860px, calc(100% - 28px)); }
+.craft-rich .craft-step-rail { grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); }
+.craft-panel { margin-top: 12px; display: grid; gap: 12px; }
+.craft-hint { margin: 0; color: #d5dcc8; font-size: 11px; line-height: 1.5; }
+.craft-mini-label { display: block; margin-bottom: 6px; color: #ffffff66; font-size: 8px; letter-spacing: .08em; }
+.craft-choice-cards { display: grid; gap: 8px; }
+.craft-choice-cards button { display: grid; gap: 6px; padding: 12px; border: 1px solid #ffffff27; background: #ffffff0a; color: white; text-align: left; cursor: pointer; }
+.craft-choice-cards button strong { font-size: 13px; }
+.craft-choice-cards button span { color: #ffffff78; font-size: 10px; line-height: 1.45; }
+.craft-choice-cards button:hover { border-color: var(--accent); }
+.craft-primary, .craft-ghost { justify-self: start; padding: 10px 14px; border: 1px solid var(--accent); background: var(--accent); color: #151912; font-size: 10px; cursor: pointer; }
+.craft-ghost { border-color: #ffffff30; background: transparent; color: #d8dfcb; }
+.craft-slider { display: grid; gap: 6px; color: #d6dccb; font-size: 10px; }
+.craft-slider b { color: var(--accent); }
+.craft-slider input { width: 100%; accent-color: var(--accent); }
+.align-meter { position: relative; height: 18px; border: 1px solid #ffffff28; background: #0c100c; overflow: hidden; }
+.align-meter .align-zone { position: absolute; top: 0; bottom: 0; left: 42%; width: 16%; background: #e6ff4a33; }
+.align-meter .ink-zone { left: 55%; width: 23%; }
+.align-meter .wither-zone { left: 38%; width: 14%; }
+.align-meter .kill-zone { left: 42%; width: 31%; }
+.align-meter .ferment-zone { left: 55%; width: 15%; }
+.align-meter b { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--accent); transform: translateX(-50%); }
+.ink-board { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 48px 80px; justify-items: center; min-height: 160px; padding: 18px; border: 1px solid #ffffff22; background: #93623c22; }
+.ink-board .ink-beam { position: absolute; inset: 36px 48px; border: 2px solid #d9bd7266; pointer-events: none; }
+.ink-point { z-index: 1; width: 64px; height: 36px; border: 1px solid #ffffff30; background: #ffffff0c; color: white; font-size: 10px; cursor: pointer; }
+.ink-point.marked { border-color: var(--accent); color: var(--accent); }
+.mortise-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.mortise-grid { display: grid; grid-template-columns: repeat(5, 28px); gap: 4px; }
+.mortise-grid button, .mortise-grid span { width: 28px; height: 28px; border: 1px solid #ffffff2a; background: #8b5a3544; }
+.mortise-grid button.cut, .mortise-grid span.cut { background: #1a140f; box-shadow: inset 0 0 0 1px #e6ff4a55; }
+.mortise-grid.preview span { display: block; }
+.assembly-slots { display: flex; gap: 8px; }
+.assembly-slots span { flex: 1; min-height: 40px; display: grid; place-items: center; border: 1px dashed #ffffff30; color: #ffffff70; font-size: 11px; }
+.assembly-slots span.filled { border-style: solid; border-color: var(--accent); color: var(--accent); }
+.paper-stage { position: relative; height: 150px; border: 1px solid #ffffff24; background: #5a3a24; overflow: hidden; }
+.paper-plate { position: absolute; inset: 28px 36px; border: 2px solid #d9bd7277; background: #7d5234; }
+.paper-target { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; border: 2px solid #e6ff4a88; transform: translate(-50%, -50%); pointer-events: none; }
+.paper-sheet { position: absolute; width: 54px; height: 66px; border: 1px solid #fff; background: #f4efe2cc; transform: translate(-50%, -50%); }
+.rub-pad { display: grid; place-items: center; min-height: 120px; border: 1px dashed #e6ff4a55; background: #7d523433; color: #f7e9bd; font: 700 28px/1 serif; touch-action: none; user-select: none; cursor: ew-resize; }
+.hold-btn { touch-action: none; }
+.proof-row button { width: 54px; height: 58px; border: 1px solid #d9bd7275; background: #7d5234; color: #f7e9bd; font: 700 24px/1 serif; cursor: pointer; }
+.garden-grid { display: grid; grid-template-columns: repeat(3, 56px); gap: 8px; }
+.garden-grid button { width: 56px; height: 56px; border: 1px solid #ffffff2a; background: #3d5a2c55; color: #d8efb0; cursor: pointer; }
+.garden-grid button.planted { border-color: var(--accent); background: #5f8a3a66; }
+.leaf-field { display: flex; flex-wrap: wrap; gap: 8px; }
+.leaf { width: 48px; height: 48px; border: 1px solid #ffffff2a; background: #2f4a24; color: #cfe3a8; cursor: pointer; }
+.leaf.ripe { background: #8a7a28; color: #fff4b8; border-color: #e6ff4a66; }
+.leaf.taken { opacity: .3; cursor: default; }
+.ferment-swatch { height: 48px; border: 1px solid #ffffff28; }
+.joint-progress { display: flex; gap: 6px; margin-bottom: 8px; }
+.joint-progress span { flex: 1; padding: 6px; border: 1px solid #ffffff24; text-align: center; color: #ffffff66; font-size: 10px; }
+.joint-progress span.on { border-color: var(--accent); color: var(--accent); }
+.shadow-controls button small { display: block; margin-top: 4px; color: #ffffff70; font-size: 8px; font-weight: 400; }
+.craft-shadow-rich .shadow-controls .craft-primary { width: auto; margin-top: 8px; }
 .mobile-actions, .touch-zone { display: none; }
 
 @media (max-width: 720px), (pointer: coarse) {
@@ -150,5 +209,9 @@ kbd { display: inline-block; min-width: 52px; color: white; font-family: inherit
   .process-line { grid-template-columns: 1fr; }.process-line li { min-height: auto; }.process-line li span { display: inline; margin: 0 8px 0 0; }
   .tea-guest { grid-template-columns: auto 1fr; }.tea-guest button { grid-column: 1 / -1; }
   .shadow-workbench { grid-template-columns: 1fr; }.shadow-preview { min-height: 220px; }
+  .mortise-compare { grid-template-columns: 1fr; }
+  .ink-board { gap: 28px 40px; }
+  .garden-grid { grid-template-columns: repeat(3, 48px); }
+  .garden-grid button { width: 48px; height: 48px; }
   .heritage-source { padding: 10px 18px; }
 }

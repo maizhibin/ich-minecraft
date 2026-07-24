@@ -10,11 +10,12 @@
 - 圆形区块加载、暴露面剔除、合并区块网格和脏标记更新
 - DTCoder 像素文字墙
 - 大型古典体素博物馆
-- 榫卯营造工序挑战
-- 木活字镜像排版和拓印
-- 茶园、七道制茶工序、茶馆和 NPC 待客
-- 皮影角色制作、关节设置、背光和动作时间轴
+- 榫卯营造工序挑战（识材、墨线、卯位、制榫、试装、合架）
+- 木活字镜像问答、排字、校对、上墨、覆纸与拓印
+- 茶园、制茶各步操作、茶馆奉茶与口味应答
+- 皮影角色、关节、姿态、背光、录拍排练与开演
 - 成长型博物馆进度及世界奖励
+- 本机学习进度持久化（刷新可恢复；图鉴内可清除）
 - Web Audio API 程序化原创 BGM
 - 放置、破坏、跳跃和工坊反馈音效
 - 桌面端和移动端响应式交互
@@ -72,15 +73,19 @@ npm run build
 ## 技术结构
 
 - `app/voxel-game.tsx`：Three.js 场景、地形、区块、物理、方块交互和世界事件
-- `app/heritage-workshop.tsx`：榫卯、木活字与博物馆成长界面
+- `app/heritage/`：非遗注册表、进度持久化与世界奖励配置（扩展新项目时优先改这里）
+- `app/heritage/crafts/`：榫卯、木活字、制茶、皮影的加厚玩法组件
+- `app/heritage-workshop.tsx`：博物馆档案壳（页签、进度、资料来源）
 - `app/game-audio.ts`：程序化 BGM、音效和静音状态
 - `app/globals.css`：游戏 HUD、工坊和移动端样式
 - `AGENTS.md`：项目协作、性能、非遗资料和质量检查规范
 - `docs/ICH-GAME-DESIGN.md`：非遗玩法设计、技术方案和验收标准
+- `docs/ROADMAP.md`：后续迭代版本与本轮系统奠基验收清单
 
 ## 设计文档
 
-完整设计见 [DTCoder Blocklands 非遗生存建造玩法设计](docs/ICH-GAME-DESIGN.md)。
+完整设计见 [DTCoder Blocklands 非遗生存建造玩法设计](docs/ICH-GAME-DESIGN.md)。  
+迭代计划见 [迭代路线图](docs/ROADMAP.md)。
 
 ## 资料来源
 
