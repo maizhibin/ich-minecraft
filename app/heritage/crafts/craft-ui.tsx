@@ -1,12 +1,39 @@
 "use client";
 
-// 工坊共用：音效、阶段条、反馈文案。失败只重试当前步，不整关清空。
+// 工坊共用：音效、阶段条、反馈文案、中途阶段持久化。
 
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { GameSound } from "../../game-audio";
+import { clearCraftDraft, loadCraftDraft, saveCraftDraft } from "../progress";
+import type { HeritageTrack } from "../types";
 
 export function playCraftSound(sound: GameSound = "craft") {
   window.dispatchEvent(new CustomEvent("game-sound", { detail: sound }));
+}
+
+/** 工序阶段持久化：刷新后可从中途继续；完成后清除草稿 */
+export function usePersistedPhase(track: HeritageTrack, completed: boolean) {
+  const [phase, setPhaseRaw] = useState(() => {
+    if (completed) return 0;
+    return loadCraftDraft(track) ?? 0;
+  });
+
+  const setPhase = useCallback(
+    (updater: number | ((current: number) => number)) => {
+      setPhaseRaw((current) => {
+        const next = typeof updater === "function" ? updater(current) : updater;
+        if (!completed) saveCraftDraft(track, next);
+        return next;
+      });
+    },
+    [completed, track],
+  );
+
+  useEffect(() => {
+    if (completed) clearCraftDraft(track);
+  }, [completed, track]);
+
+  return [phase, setPhase] as const;
 }
 
 type StepRailProps = {
@@ -73,7 +100,7 @@ export function CraftShell({ tag, title, lead, children }: CraftShellProps) {
         <span className="craft-tag">{tag}</span>
         <h3>{title}</h3>
         <p>{lead}</p>
-        <p className="craft-eta">建议用时约 5—8 分钟 · 出错只重试当前步骤</p>
+        <p className="craft-eta">建议用时约 5—8 分钟 · 出错只重试当前步骤 · 中途进度会自动保存</p>
       </div>
       {children}
     </article>

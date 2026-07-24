@@ -9,11 +9,13 @@ import { HeritageWorkshop } from "./heritage-workshop";
 import {
   HERITAGE_TRACKS,
   WORKSHOPS,
+  applyFestivalReward,
   applyHeritageReward,
   countCompleted,
   clearHeritageProgress,
   getHeritageProgressSnapshot,
   getServerHeritageProgressSnapshot,
+  isFestivalDone,
   loadHeritageProgress,
   markTrackCompleted,
   restoreHeritageRewards,
@@ -21,6 +23,7 @@ import {
   type HeritageTrack,
 } from "./heritage";
 import { heritageSiteBlock } from "./heritage/world-sites";
+import { museumBlock } from "./heritage/museum-world";
 import { resolveAmbientZone } from "./heritage/ambient-zones";
 import { createWorldNpcSystem } from "./heritage/world-npcs";
 import { createVoxelSky, SKY_HORIZON } from "./voxel-sky";
@@ -138,85 +141,6 @@ for (const letter of "DTCoder") {
     });
   });
   letterCursor += 5;
-}
-
-// 位于中央沙地右侧的大型古典体素博物馆，入口朝向玩家出生点。
-function museumBlock(x: number, y: number, z: number): BlockType | null | undefined {
-  const museumX = x - 13;
-  const museumZ = z + 10;
-  const inside = museumX >= 7 && museumX <= 37 && museumZ >= -4 && museumZ <= 18;
-  const entrance = museumZ === 18 && museumX >= 20 && museumX <= 24 && y <= 10;
-  const sideWindow =
-    (museumX === 7 || museumX === 37) &&
-    ([0, 1, 5, 6, 10, 11, 15, 16].includes(museumZ)) &&
-    y >= 7 &&
-    y <= 10;
-  const backWindow =
-    museumZ === -4 &&
-    ([11, 12, 17, 18, 26, 27, 32, 33].includes(museumX)) &&
-    y >= 7 &&
-    y <= 10;
-  const skylight = y === 14 && museumX >= 20 && museumX <= 24 && museumZ >= 4 && museumZ <= 10;
-
-  if (inside && y === 4) return "wood";
-  if (
-    inside &&
-    y >= 5 &&
-    y <= 13 &&
-    (museumX === 7 || museumX === 37 || museumZ === -4 || museumZ === 18) &&
-    !entrance &&
-    !sideWindow &&
-    !backWindow
-  ) return "stone";
-  if (inside && y === 14 && !skylight) return "stone";
-
-  // 西侧榫卯台与东侧木活字印刷台。
-  if (museumZ === 4 && y === 5 && (museumX === 14 || museumX === 15)) return "wood";
-  if (museumZ === 4 && y === 5 && (museumX === 29 || museumX === 30)) return "stone";
-  if (museumZ === 4 && museumX === 30 && y === 6) return "wood";
-
-  // 宽台阶、六柱门廊、横梁与高耸山花。
-  if (museumZ === 19 && museumX >= 16 && museumX <= 28 && y === 4) return "sand";
-  if (museumZ === 20 && museumX >= 18 && museumX <= 26 && y === 4) return "sand";
-  if (museumZ === 19 && [9, 14, 19, 25, 30, 35].includes(museumX) && y >= 5 && y <= 13) return "sand";
-  if (museumZ === 18 && y === 15 && museumX >= 9 && museumX <= 35) return "stone";
-  if (museumZ === 18 && y === 16 && museumX >= 12 && museumX <= 32) return "stone";
-  if (museumZ === 18 && y === 17 && museumX >= 15 && museumX <= 29) return "stone";
-  if (museumZ === 18 && y === 18 && museumX >= 19 && museumX <= 25) return "stone";
-
-  // 十二座主题展台分布在两侧展廊（含青瓷、剪纸、云锦主题色块）。
-  const exhibits: Array<{ x: number; z: number; block: BlockType }> = [
-    { x: 11, z: 1, block: "leaves" },
-    { x: 17, z: 1, block: "stone" },
-    { x: 27, z: 1, block: "sand" },
-    { x: 33, z: 1, block: "wood" },
-    { x: 11, z: 7, block: "grass" },
-    { x: 17, z: 7, block: "wood" },
-    { x: 27, z: 7, block: "dirt" },
-    { x: 33, z: 7, block: "leaves" },
-    { x: 11, z: 13, block: "sand" },
-    { x: 17, z: 13, block: "dirt" },
-    { x: 27, z: 13, block: "stone" },
-    { x: 33, z: 13, block: "grass" },
-  ];
-  const exhibit = exhibits.find((item) => item.x === museumX && item.z === museumZ);
-  if (exhibit && y === 5) return "sand";
-  if (exhibit && y === 6) return exhibit.block;
-
-  // 东廊新增：青瓷、剪纸、云锦示意展柜（教学化色块，非真实藏品）
-  if (museumX === 35 && museumZ === 4 && y === 5) return "sand";
-  if (museumX === 35 && museumZ === 4 && y === 6) return "leaves";
-  if (museumX === 35 && museumZ === 10 && y === 5) return "sand";
-  if (museumX === 35 && museumZ === 10 && y === 6) return "wood";
-  if (museumX === 35 && museumZ === 16 && y === 5) return "sand";
-  if (museumX === 35 && museumZ === 16 && y === 6) return "stone";
-
-  // 中央挑空大厅中的树形主展品和基座。
-  if (museumX >= 21 && museumX <= 23 && museumZ >= 7 && museumZ <= 9 && y === 5) return "sand";
-  if (museumX === 22 && museumZ === 8 && y >= 6 && y <= 10) return "wood";
-  if (y >= 9 && y <= 12 && Math.abs(museumX - 22) + Math.abs(museumZ - 8) <= 3) return "leaves";
-
-  return undefined;
 }
 
 function createTextureAtlas() {
@@ -568,6 +492,10 @@ export function VoxelGame() {
       );
     };
     window.addEventListener("heritage-complete", handleHeritageComplete);
+    const handleFestivalComplete = () => {
+      applyFestivalReward(writeRewardBlock, markDirtyAt);
+    };
+    window.addEventListener("festival-complete", handleFestivalComplete);
 
     // 刷新后按存档重放已完成技艺的世界奖励，再生成首批区块
     restoreHeritageRewards(
@@ -575,6 +503,7 @@ export function VoxelGame() {
       writeRewardBlock,
       markDirtyAt,
     );
+    if (isFestivalDone()) applyFestivalReward(writeRewardBlock, markDirtyAt);
 
     updateDesiredChunks(true);
     const controls = new PointerLockControls(camera, renderer.domElement);
@@ -961,6 +890,7 @@ export function VoxelGame() {
       window.removeEventListener("voxel-action", handleAction);
       window.removeEventListener("heritage-open", handleHeritageOpen);
       window.removeEventListener("heritage-complete", handleHeritageComplete);
+      window.removeEventListener("festival-complete", handleFestivalComplete);
       window.removeEventListener("game-sound", handleGameSound);
       window.removeEventListener("game-audio-toggle", handleAudioToggle);
       renderer.domElement.removeEventListener("mousedown", onMouseDown);

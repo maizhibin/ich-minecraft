@@ -10,6 +10,7 @@ import {
   CraftShell,
   StepRail,
   playCraftSound,
+  usePersistedPhase,
 } from "./craft-ui";
 
 const PHASES = ["选纸", "对称", "识纹", "剪刻", "展开", "修整", "贴窗"] as const;
@@ -98,7 +99,7 @@ function matchScore(a: number[][], b: number[][]) {
 }
 
 export function PapercutCraft({ completed, onComplete }: PapercutCraftProps) {
-  const [phase, setPhase] = useState(0);
+  const [phase, setPhase] = usePersistedPhase("papercut", completed);
   const [feedback, setFeedback] = useState("先选择纸色。民间窗花常用大红寄托喜庆。");
   const [paperId, setPaperId] = useState("");
   const [symmetry, setSymmetry] = useState<"lr" | "quad" | "">("");

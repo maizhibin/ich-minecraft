@@ -1,7 +1,7 @@
 "use client";
 
 // 龙泉青瓷：备泥→练泥→制坯→晾坯→施釉→装窑→窑温曲线→开窑。
-// 窑温为教学化升温/保温/降温三段；失败只重试当前步。
+// 装窑后可选哥窑开片 / 弟窑梅子青对比；窑温为教学化三段；失败只重试当前步。
 
 import { useEffect, useRef, useState } from "react";
 import {
@@ -11,6 +11,7 @@ import {
   StepRail,
   inRange,
   playCraftSound,
+  usePersistedPhase,
 } from "./craft-ui";
 
 const PHASES = ["备泥", "练泥", "制坯", "晾坯", "施釉", "装窑", "窑温曲线", "开窑"] as const;
@@ -24,6 +25,11 @@ const GLAZES = [
   { id: "plum", label: "梅子青" },
   { id: "deep", label: "深翠" },
 ] as const;
+/** 哥窑强调开片；弟窑强调梅子青温润（教学对比） */
+const KILN_STYLES = [
+  { id: "ge", label: "哥窑开片", inspect: ["生烧灰哑", "哥窑开片", "过烧起泡"] as const },
+  { id: "di", label: "弟窑梅子青", inspect: ["生烧灰哑", "梅子青温润", "过烧起泡"] as const },
+] as const;
 /** 窑温三段目标：升温终点、保温区间、降温终点（教学抽象数值） */
 const KILN_TARGETS = [
   { name: "升温", min: 72, max: 88, hint: "把火焰抬到橙白交界（72—88）后确认。" },
@@ -31,13 +37,15 @@ const KILN_TARGETS = [
   { name: "降温", min: 28, max: 42, hint: "缓慢降至余温区（28—42）后开窑前确认。" },
 ] as const;
 
+type PorcelainStyle = (typeof KILN_STYLES)[number]["id"];
+
 type PorcelainCraftProps = {
   completed: boolean;
   onComplete: () => void;
 };
 
 export function PorcelainCraft({ completed, onComplete }: PorcelainCraftProps) {
-  const [phase, setPhase] = useState(0);
+  const [phase, setPhase] = usePersistedPhase("porcelain", completed);
   const [feedback, setFeedback] = useState("按教学比例调配泥料：黏土 45—55、石英 20—30、草木灰 15—25。");
   const [clay, setClay] = useState(30);
   const [quartz, setQuartz] = useState(40);
@@ -52,6 +60,7 @@ export function PorcelainCraft({ completed, onComplete }: PorcelainCraftProps) {
   const [coat, setCoat] = useState(0);
   const [coating, setCoating] = useState(false);
   const [shelf, setShelf] = useState<number[]>([]);
+  const [kilnStyle, setKilnStyle] = useState<PorcelainStyle | "">("");
   const [kilnStage, setKilnStage] = useState(0);
   const [flame, setFlame] = useState(20);
   const [pickGood, setPickGood] = useState<number | null>(null);
@@ -196,11 +205,26 @@ export function PorcelainCraft({ completed, onComplete }: PorcelainCraftProps) {
     }
     setKilnStage(0);
     setFlame(20);
-    advance("装窑完成。进入窑温曲线：升温→保温→降温。");
+    setKilnStyle("");
+    advance("装窑完成。先选哥窑开片或弟窑梅子青，再走窑温曲线。");
+  };
+
+  const selectKilnStyle = (id: PorcelainStyle) => {
+    playCraftSound("ui");
+    setKilnStyle(id);
+    setFeedback(
+      id === "ge"
+        ? "哥窑路线：开窑时认开片纹。进入窑温曲线：升温→保温→降温。"
+        : "弟窑路线：开窑时认梅子青温润。进入窑温曲线：升温→保温→降温。",
+    );
   };
 
   const confirmKilnStage = () => {
     playCraftSound("craft");
+    if (!kilnStyle) {
+      setFeedback("请先选择哥窑或弟窑教学路线。");
+      return;
+    }
     const target = KILN_TARGETS[kilnStage];
     if (!inRange(flame, target.min, target.max)) {
       setFeedback(`${target.name}未到位（当前 ${flame}）。请只调整本段火焰。`);
@@ -213,12 +237,16 @@ export function PorcelainCraft({ completed, onComplete }: PorcelainCraftProps) {
       return;
     }
     setPickGood(null);
-    advance("窑温曲线完成。开窑验坯：选出未过烧的一件。");
+    advance(
+      kilnStyle === "ge"
+        ? "窑温曲线完成。开窑验坯：选出带开片特征的一件。"
+        : "窑温曲线完成。开窑验坯：选出梅子青温润的一件。",
+    );
   };
 
   const finishInspect = (index: number) => {
     playCraftSound("craft");
-    // 中间一件为合格教学件
+    // 中间一件为合格教学件（标签随哥窑/弟窑路线变化）
     if (index !== 1) {
       setFeedback("这件有过烧或生烧痕迹。请再选（本步重试）。");
       return;
@@ -329,8 +357,22 @@ export function PorcelainCraft({ completed, onComplete }: PorcelainCraftProps) {
         </div>
       )}
 
-      {phase === 6 && (
+      {phase === 6 && !kilnStyle && (
         <div className="craft-panel">
+          <p className="craft-hint">选择窑系对比路线（教学抽象，非完整窑口复原）。</p>
+          <div className="type-choices" role="group" aria-label="哥窑与弟窑">
+            {KILN_STYLES.map((style) => (
+              <button key={style.id} type="button" onClick={() => selectKilnStyle(style.id)}>
+                {style.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {phase === 6 && kilnStyle && (
+        <div className="craft-panel">
+          <p className="craft-hint">当前：{kilnStyle === "ge" ? "哥窑开片" : "弟窑梅子青"}</p>
           <ol className="process-line craft-step-rail" aria-label="窑温三段">
             {KILN_TARGETS.map((stage, index) => (
               <li
@@ -372,9 +414,11 @@ export function PorcelainCraft({ completed, onComplete }: PorcelainCraftProps) {
 
       {phase === 7 && (
         <div className="craft-panel">
-          <p className="craft-hint">三件出窑，选出釉色温润、未过烧者。</p>
+          <p className="craft-hint">
+            三件出窑，选出{kilnStyle === "ge" ? "开片特征明确" : "梅子青温润"}者。
+          </p>
           <div className="inspect-row">
-            {["生烧灰哑", "梅子青温润", "过烧起泡"].map((label, index) => (
+            {(KILN_STYLES.find((s) => s.id === kilnStyle) ?? KILN_STYLES[1]).inspect.map((label, index) => (
               <button
                 key={label}
                 type="button"

@@ -39,4 +39,8 @@ export type HeritageSaveData = {
   version: 1;
   completed: HeritageProgress;
   updatedAt: string;
+  /** 未完成技艺的中途阶段（仅 phase 索引） */
+  drafts?: Partial<Record<HeritageTrack, number>>;
+  /** 村落节庆演练是否完成（不计入七项进度） */
+  festivalDone?: boolean;
 };

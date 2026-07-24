@@ -11,6 +11,7 @@ import {
   StepRail,
   inRange,
   playCraftSound,
+  usePersistedPhase,
 } from "./craft-ui";
 
 const PHASES = ["识镜像", "排字", "校对", "上墨", "覆纸", "拓印"] as const;
@@ -40,7 +41,7 @@ type PrintingCraftProps = {
 };
 
 export function PrintingCraft({ completed, onComplete }: PrintingCraftProps) {
-  const [phase, setPhase] = useState(0);
+  const [phase, setPhase] = usePersistedPhase("printing", completed);
   const [feedback, setFeedback] = useState("先弄清：字模要反向排，印到纸上才是正字。");
   const [quizIndex, setQuizIndex] = useState(0);
   const [plate, setPlate] = useState<string[]>([]);

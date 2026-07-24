@@ -1,6 +1,6 @@
 "use client";
 
-// 皮影戏：选角 → 连关节 → 调姿态 → 定灯光 → 录四拍 → 排练 → 开演。
+// 皮影戏：选角 → 连关节 → 调姿态 → 定灯光 → 录四拍 → 排练 → 唱腔 → 击乐 → 流派 → 开演。
 // 关节顺序或时间轴拍名错误只重置当前步。
 
 import { useEffect, useState, type CSSProperties } from "react";
@@ -11,9 +11,10 @@ import {
   StepRail,
   inRange,
   playCraftSound,
+  usePersistedPhase,
 } from "./craft-ui";
 
-const PHASES = ["选角", "连关节", "调姿态", "定灯光", "录动作", "排练", "开演"] as const;
+const PHASES = ["选角", "连关节", "调姿态", "定灯光", "录动作", "排练", "唱腔", "击乐", "流派", "开演"] as const;
 const ROLES = [
   { id: "人物", blurb: "生旦净丑皆可入戏，先把握身段开合。" },
   { id: "瑞兽", blurb: "瑞兽影人强调头颈与四肢夸张摆动。" },
@@ -21,6 +22,9 @@ const ROLES = [
 ] as const;
 const JOINTS = ["肩", "肘", "腕"] as const;
 const BEATS = ["登场", "亮相", "转身", "谢幕"] as const;
+const CHANTS = ["高腔短句", "平叙白", "悲腔尾音"] as const;
+const INSTRUMENTS = ["锣", "鼓", "板"] as const;
+const SCHOOLS = ["陇东灯影", "潮州铁枝", "河北滦州"] as const;
 
 type Pose = { left: number; right: number; tilt: number };
 
@@ -32,7 +36,7 @@ type ShadowCraftProps = {
 };
 
 export function ShadowCraft({ completed, onComplete }: ShadowCraftProps) {
-  const [phase, setPhase] = useState(0);
+  const [phase, setPhase] = usePersistedPhase("shadow", completed);
   const [feedback, setFeedback] = useState("先选定本场影人角色，并阅读简短提示。");
   const [role, setRole] = useState("");
   const [joints, setJoints] = useState<string[]>([]);
@@ -44,6 +48,9 @@ export function ShadowCraft({ completed, onComplete }: ShadowCraftProps) {
   const [rehearseIndex, setRehearseIndex] = useState(-1);
   const [rehearseDone, setRehearseDone] = useState(false);
   const [rehearsing, setRehearsing] = useState(false);
+  const [chant, setChant] = useState("");
+  const [instrument, setInstrument] = useState("");
+  const [school, setSchool] = useState("");
 
   const advance = (message: string) => {
     playCraftSound("shadow");
@@ -153,7 +160,7 @@ export function ShadowCraft({ completed, onComplete }: ShadowCraftProps) {
         setRehearsing(false);
         setRehearseDone(true);
         setRehearseIndex(-1);
-        setFeedback("排练结束。可以点灯开演。");
+        setFeedback("排练结束。接着选唱腔片段。");
         return;
       }
       setRehearseIndex(index);
@@ -387,20 +394,89 @@ export function ShadowCraft({ completed, onComplete }: ShadowCraftProps) {
                 type="button"
                 className="craft-primary"
                 disabled={!rehearseDone}
-                onClick={() => advance("排练确认，准备开演。")}
+                onClick={() => advance("排练确认。请点选本场唱腔片段。")}
               >
-                排练通过，进入开演
+                排练通过，进入唱腔
               </button>
             </fieldset>
           )}
 
           {phase === 6 && (
+            <fieldset>
+              <legend>唱腔片段</legend>
+              <p className="craft-hint">点选一段教学唱腔（抽象示意，非完整曲牌）。</p>
+              <div className="type-choices" role="group" aria-label="唱腔">
+                {CHANTS.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    className={chant === item ? "selected" : ""}
+                    onClick={() => {
+                      playCraftSound("ui");
+                      setChant(item);
+                      advance(`已选唱腔「${item}」。再点选伴奏乐器。`);
+                    }}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          )}
+
+          {phase === 7 && (
+            <fieldset>
+              <legend>击乐点选</legend>
+              <p className="craft-hint">影戏常以锣鼓板点节拍，选一件主击乐器。</p>
+              <div className="type-choices" role="group" aria-label="乐器">
+                {INSTRUMENTS.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    className={instrument === item ? "selected" : ""}
+                    onClick={() => {
+                      playCraftSound("ui");
+                      setInstrument(item);
+                      advance(`已选「${item}」。最后归档地方流派名称。`);
+                    }}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          )}
+
+          {phase === 8 && (
+            <fieldset>
+              <legend>地方流派档案</legend>
+              <p className="craft-hint">记下本场参照的教学流派标签（便于博物馆档案对照）。</p>
+              <div className="type-choices" role="group" aria-label="流派">
+                {SCHOOLS.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    className={school === item ? "selected" : ""}
+                    onClick={() => {
+                      playCraftSound("ui");
+                      setSchool(item);
+                      advance(`流派「${item}」已记入。可以点灯开演。`);
+                    }}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          )}
+
+          {phase === 9 && (
             <button
               type="button"
               className="shadow-perform"
               onClick={() => advance("开演完成。")}
             >
-              点灯 · 击乐 · 开演
+              点灯 · {instrument || "击乐"} · 开演
             </button>
           )}
         </div>

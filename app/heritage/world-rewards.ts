@@ -109,7 +109,6 @@ export function applyHeritageReward(
   }
 
   if (track === "yunjin") {
-    // 织机廊纹样挂幅
     for (let x = 46; x <= 50; x += 1) setBlock(x, 5, -14, "wood");
     for (let y = 6; y <= 10; y += 1) {
       setBlock(46, y, -14, "wood");
@@ -122,6 +121,20 @@ export function applyHeritageReward(
     markDirtyAt(46, -14);
     markDirtyAt(50, -14);
   }
+}
+
+/** 节庆演练完成：广场中央点亮灯笼式展陈 */
+export function applyFestivalReward(setBlock: SetRewardBlock, markDirtyAt: MarkDirtyAt) {
+  for (let x = -2; x <= 2; x += 1) {
+    setBlock(x, 5, 8, "wood");
+    setBlock(x, 8, 8, "sand");
+  }
+  setBlock(-2, 6, 8, "leaves");
+  setBlock(2, 6, 8, "leaves");
+  setBlock(0, 6, 8, "stone");
+  setBlock(0, 7, 8, "leaves");
+  markDirtyAt(-2, 8);
+  markDirtyAt(2, 8);
 }
 
 /** 根据已完成进度批量恢复世界奖励（用于刷新后重放） */

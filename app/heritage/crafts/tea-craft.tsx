@@ -1,7 +1,7 @@
 "use client";
 
 // 传统制茶：种茶→采摘→萎凋→杀青→揉捻→发酵→烘焙→奉茶。
-// 各步为独立小操作；失败只重试当前步。流程为教学综合抽象，非单一茶类规范。
+// 开局可选绿茶 / 乌龙教学路线；失败只重试当前步。流程为教学综合抽象。
 
 import { useEffect, useRef, useState } from "react";
 import {
@@ -11,9 +11,12 @@ import {
   StepRail,
   inRange,
   playCraftSound,
+  usePersistedPhase,
 } from "./craft-ui";
 
 const PHASES = ["种茶", "采摘", "萎凋", "杀青", "揉捻", "发酵", "烘焙", "奉茶"] as const;
+/** 绿茶几乎不发酵；乌龙保留教学发酵区间 */
+type TeaRoute = "green" | "oolong";
 
 type TeaCraftProps = {
   completed: boolean;
@@ -21,8 +24,9 @@ type TeaCraftProps = {
 };
 
 export function TeaCraft({ completed, onComplete }: TeaCraftProps) {
-  const [phase, setPhase] = useState(0);
-  const [feedback, setFeedback] = useState("在茶垄空位栽下 4 株茶苗，开始这一季。");
+  const [phase, setPhase] = usePersistedPhase("tea", completed);
+  const [route, setRoute] = useState<TeaRoute | "">("");
+  const [feedback, setFeedback] = useState("先选定绿茶或乌龙教学路线，再在茶垄栽下 4 株茶苗。");
   const [planted, setPlanted] = useState<number[]>([]);
   const [picked, setPicked] = useState<number[]>([]);
   const [wither, setWither] = useState(88);
@@ -58,6 +62,16 @@ export function TeaCraft({ completed, onComplete }: TeaCraftProps) {
     }
     setPhase(next);
     setFeedback(message);
+  };
+
+  const selectRoute = (next: TeaRoute) => {
+    playCraftSound("ui");
+    setRoute(next);
+    setFeedback(
+      next === "green"
+        ? "绿茶路线：杀青后基本不发酵。请栽下 4 株茶苗。"
+        : "乌龙路线：保留半发酵教学段。请栽下 4 株茶苗。",
+    );
   };
 
   const togglePlant = (index: number) => {
@@ -167,9 +181,15 @@ export function TeaCraft({ completed, onComplete }: TeaCraftProps) {
     setRollHits(next);
     if (next >= 6) {
       clearTimers();
+      if (route === "green") {
+        // 绿茶路线：发酵步改为「确认略过」
+        setFermentRunning(false);
+        advance("揉捻完成。绿茶路线几乎不发酵——确认后进入烘焙。");
+        return;
+      }
       setFerment(8);
       setFermentRunning(true);
-      advance("揉捻完成。发酵色泽推进，在琥珀色区间（55—70）停止。");
+      advance("揉捻完成。乌龙路线：发酵色泽推进，在琥珀色区间（55—70）停止。");
       const id = window.setInterval(() => {
         setFerment((value) => Math.min(100, value + 1.4));
       }, 90);
@@ -177,6 +197,11 @@ export function TeaCraft({ completed, onComplete }: TeaCraftProps) {
       return;
     }
     setFeedback(`揉捻到位 ${next}/6。`);
+  };
+
+  const confirmGreenSkipFerment = () => {
+    playCraftSound("tea");
+    advance("已确认略过发酵。设定烘焙温度 95—115、时长 35—55 后确认。");
   };
 
   const stopFerment = () => {
@@ -220,11 +245,16 @@ export function TeaCraft({ completed, onComplete }: TeaCraftProps) {
         setFeedback(`已完成「${action}」，继续。`);
         return;
       }
-      setFeedback("茶已奉上。林先生问：更偏清香还是醇厚？请选清香。");
+      setFeedback(
+        route === "oolong"
+          ? "茶已奉上。乌龙教学茶请选「醇厚」。"
+          : "茶已奉上。绿茶教学茶请选「清香」。",
+      );
       return;
     }
-    if (action !== "清香") {
-      setFeedback("这批教学茶偏向清香路线，请再选一次（本步重试）。");
+    const expect = route === "oolong" ? "醇厚" : "清香";
+    if (action !== expect) {
+      setFeedback(`本路线口味应答应为「${expect}」。请再选一次（本步重试）。`);
       return;
     }
     advance("奉茶完成。");
@@ -263,13 +293,25 @@ export function TeaCraft({ completed, onComplete }: TeaCraftProps) {
     <CraftShell
       tag="传统制茶技艺及相关习俗"
       title="从一片鲜叶到一席待客茶"
-      lead="预计 5—8 分钟。不同茶类真实工序各异，本关是综合教学抽象；失败只重试当前工序。"
+      lead="预计 5—8 分钟。开局可选绿茶 / 乌龙差异路线；仍是教学抽象，失败只重试当前工序。"
     >
       <StepRail label="制茶进度" steps={PHASES} current={phase} />
 
-      {phase === 0 && (
+      {phase === 0 && !route && (
         <div className="craft-panel">
-          <p className="craft-hint">点击空位栽苗，正好 4 株后确认（{planted.length}/4）。</p>
+          <p className="craft-hint">选择本关茶类路线（教学对比，非完整茶类规范）。</p>
+          <div className="type-choices" role="group" aria-label="茶类路线">
+            <button type="button" onClick={() => selectRoute("green")}>绿茶 · 清香少发酵</button>
+            <button type="button" onClick={() => selectRoute("oolong")}>乌龙 · 半发酵醇厚</button>
+          </div>
+        </div>
+      )}
+
+      {phase === 0 && route && (
+        <div className="craft-panel">
+          <p className="craft-hint">
+            当前：{route === "green" ? "绿茶" : "乌龙"}路线。点击空位栽苗，正好 4 株后确认（{planted.length}/4）。
+          </p>
           <div className="garden-grid" role="grid" aria-label="茶垄">
             {Array.from({ length: 9 }, (_, index) => (
               <button
@@ -349,7 +391,16 @@ export function TeaCraft({ completed, onComplete }: TeaCraftProps) {
         </div>
       )}
 
-      {phase === 5 && (
+      {phase === 5 && route === "green" && (
+        <div className="craft-panel">
+          <p className="craft-hint">绿茶教学路线：杀青后基本不走氧化发酵，点确认进入烘焙。</p>
+          <button type="button" className="craft-primary" onClick={confirmGreenSkipFerment}>
+            确认略过发酵
+          </button>
+        </div>
+      )}
+
+      {phase === 5 && route !== "green" && (
         <div className="craft-panel">
           <p className="craft-hint">发酵色泽 {Math.round(ferment)}（目标 55—70）{fermentRunning ? " · 进行中" : ""}</p>
           <div
@@ -392,7 +443,9 @@ export function TeaCraft({ completed, onComplete }: TeaCraftProps) {
               <p>
                 {serveStep < 3
                   ? "请按序温器、注水、奉茶。"
-                  : "这盏茶，您觉得更接近清香还是醇厚？"}
+                  : route === "oolong"
+                    ? "这盏乌龙教学茶，您觉得更接近清香还是醇厚？"
+                    : "这盏绿茶教学茶，您觉得更接近清香还是醇厚？"}
               </p>
             </div>
           </div>

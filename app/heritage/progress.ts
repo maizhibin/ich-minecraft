@@ -1,18 +1,17 @@
 // 非遗学习进度的浏览器端持久化。
-// 仅使用 localStorage，不引入账号或服务端；失败时静默回退为空进度。
-// 通过订阅 + 稳定快照配合 useSyncExternalStore，避免 SSR 水合文本不一致。
+// 仅使用 localStorage；完成态 + 可选中途 phase 草稿。
 
 import { createEmptyProgress, isHeritageTrack } from "./registry";
 import type { HeritageProgress, HeritageSaveData, HeritageTrack } from "./types";
 
 const STORAGE_KEY = "dtcoder-blocklands-heritage-v1";
 
-/** 服务端与水合阶段共用的空进度引用（必须稳定，不能每次新建） */
 const serverSnapshot = createEmptyProgress();
-
-/** 客户端当前快照；写入存档后更新，供 useSyncExternalStore 比较 */
 let clientSnapshot: HeritageProgress = serverSnapshot;
 let hasClientSnapshot = false;
+/** 中途草稿缓存，与完成态一并读写 */
+let clientDrafts: Partial<Record<HeritageTrack, number>> = {};
+let festivalDone = false;
 
 const listeners = new Set<() => void>();
 
@@ -26,64 +25,54 @@ function sanitizeProgress(raw: unknown): HeritageProgress {
   return empty;
 }
 
-function readFromStorage(): HeritageProgress {
+function sanitizeDrafts(raw: unknown): Partial<Record<HeritageTrack, number>> {
+  if (!raw || typeof raw !== "object") return {};
+  const result: Partial<Record<HeritageTrack, number>> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (isHeritageTrack(key) && typeof value === "number" && value >= 0) {
+      result[key] = Math.floor(value);
+    }
+  }
+  return result;
+}
+
+function readSave(): {
+  completed: HeritageProgress;
+  drafts: Partial<Record<HeritageTrack, number>>;
+  festivalDone: boolean;
+} {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return createEmptyProgress();
+    if (!raw) return { completed: createEmptyProgress(), drafts: {}, festivalDone: false };
     const parsed = JSON.parse(raw) as Partial<HeritageSaveData>;
-    return sanitizeProgress(parsed.completed);
+    return {
+      completed: sanitizeProgress(parsed.completed),
+      drafts: sanitizeDrafts(parsed.drafts),
+      festivalDone: Boolean(parsed.festivalDone),
+    };
   } catch {
-    return createEmptyProgress();
+    return { completed: createEmptyProgress(), drafts: {}, festivalDone: false };
   }
 }
 
-function notifyHeritageProgressListeners() {
-  for (const listener of listeners) listener();
-}
-
-/** 订阅进度变更；供 useSyncExternalStore 使用 */
-export function subscribeHeritageProgress(onStoreChange: () => void): () => void {
-  listeners.add(onStoreChange);
-  return () => {
-    listeners.delete(onStoreChange);
-  };
-}
-
-/** 客户端快照：首次读取时从 localStorage 填充，之后返回缓存引用 */
-export function getHeritageProgressSnapshot(): HeritageProgress {
-  if (typeof window === "undefined") return serverSnapshot;
-  if (!hasClientSnapshot) {
-    clientSnapshot = readFromStorage();
-    hasClientSnapshot = true;
-  }
-  return clientSnapshot;
-}
-
-/** SSR / 水合阶段快照：始终为空进度，与服务端 HTML 一致 */
-export function getServerHeritageProgressSnapshot(): HeritageProgress {
-  return serverSnapshot;
-}
-
-/** 读取存档；无存档或损坏时返回空进度（同时刷新客户端缓存） */
-export function loadHeritageProgress(): HeritageProgress {
-  if (typeof window === "undefined") return createEmptyProgress();
-  clientSnapshot = readFromStorage();
-  hasClientSnapshot = true;
-  return clientSnapshot;
-}
-
-/** 写入进度；返回是否写入成功 */
-export function saveHeritageProgress(completed: HeritageProgress): boolean {
+function writeSave(
+  completed: HeritageProgress,
+  drafts: Partial<Record<HeritageTrack, number>>,
+  festival = festivalDone,
+): boolean {
   if (typeof window === "undefined") return false;
   const payload: HeritageSaveData = {
     version: 1,
     completed,
+    drafts,
+    festivalDone: festival,
     updatedAt: new Date().toISOString(),
   };
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    // 使用新对象引用，确保订阅方能检测到变更
     clientSnapshot = { ...completed };
+    clientDrafts = { ...drafts };
+    festivalDone = festival;
     hasClientSnapshot = true;
     notifyHeritageProgressListeners();
     return true;
@@ -92,28 +81,112 @@ export function saveHeritageProgress(completed: HeritageProgress): boolean {
   }
 }
 
-/** 清除存档并返回空进度 */
+function notifyHeritageProgressListeners() {
+  for (const listener of listeners) listener();
+}
+
+export function subscribeHeritageProgress(onStoreChange: () => void): () => void {
+  listeners.add(onStoreChange);
+  return () => {
+    listeners.delete(onStoreChange);
+  };
+}
+
+export function getHeritageProgressSnapshot(): HeritageProgress {
+  if (typeof window === "undefined") return serverSnapshot;
+  if (!hasClientSnapshot) {
+    const save = readSave();
+    clientSnapshot = save.completed;
+    clientDrafts = save.drafts;
+    festivalDone = save.festivalDone;
+    hasClientSnapshot = true;
+  }
+  return clientSnapshot;
+}
+
+export function getServerHeritageProgressSnapshot(): HeritageProgress {
+  return serverSnapshot;
+}
+
+export function loadHeritageProgress(): HeritageProgress {
+  if (typeof window === "undefined") return createEmptyProgress();
+  const save = readSave();
+  clientSnapshot = save.completed;
+  clientDrafts = save.drafts;
+  festivalDone = save.festivalDone;
+  hasClientSnapshot = true;
+  return clientSnapshot;
+}
+
+export function saveHeritageProgress(completed: HeritageProgress): boolean {
+  return writeSave(completed, clientDrafts);
+}
+
 export function clearHeritageProgress(): HeritageProgress {
   if (typeof window !== "undefined") {
     try {
       window.localStorage.removeItem(STORAGE_KEY);
     } catch {
-      // 忽略清除失败，仍返回空进度供界面使用
+      // ignore
     }
   }
   clientSnapshot = createEmptyProgress();
+  clientDrafts = {};
+  festivalDone = false;
   hasClientSnapshot = true;
   notifyHeritageProgressListeners();
   return clientSnapshot;
 }
 
-/** 标记单项完成并立刻落盘 */
 export function markTrackCompleted(
   current: HeritageProgress,
   track: HeritageTrack,
 ): HeritageProgress {
   if (!isHeritageTrack(track) || current[track]) return current;
   const next = { ...current, [track]: true };
-  saveHeritageProgress(next);
+  const drafts = { ...clientDrafts };
+  delete drafts[track];
+  writeSave(next, drafts);
   return next;
+}
+
+/** 读取某技艺中途阶段；无草稿返回 null */
+export function loadCraftDraft(track: HeritageTrack): number | null {
+  if (typeof window === "undefined") return null;
+  if (!hasClientSnapshot) loadHeritageProgress();
+  const value = clientDrafts[track];
+  return typeof value === "number" ? value : null;
+}
+
+/** 写入中途阶段（已完成的技艺不会写草稿） */
+export function saveCraftDraft(track: HeritageTrack, phase: number): void {
+  if (typeof window === "undefined") return;
+  if (!hasClientSnapshot) loadHeritageProgress();
+  if (clientSnapshot[track]) return;
+  writeSave(clientSnapshot, { ...clientDrafts, [track]: Math.max(0, Math.floor(phase)) });
+}
+
+/** 清除单项中途草稿 */
+export function clearCraftDraft(track: HeritageTrack): void {
+  if (typeof window === "undefined") return;
+  if (!hasClientSnapshot) loadHeritageProgress();
+  if (!(track in clientDrafts)) return;
+  const drafts = { ...clientDrafts };
+  delete drafts[track];
+  writeSave(clientSnapshot, drafts);
+}
+
+/** 节庆演练是否完成 */
+export function isFestivalDone(): boolean {
+  if (typeof window === "undefined") return false;
+  if (!hasClientSnapshot) loadHeritageProgress();
+  return festivalDone;
+}
+
+/** 标记节庆演练完成并落盘 */
+export function markFestivalDone(): void {
+  if (typeof window === "undefined") return;
+  if (!hasClientSnapshot) loadHeritageProgress();
+  if (festivalDone) return;
+  writeSave(clientSnapshot, clientDrafts, true);
 }

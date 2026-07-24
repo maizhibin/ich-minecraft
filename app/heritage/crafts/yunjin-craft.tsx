@@ -11,6 +11,7 @@ import {
   StepRail,
   inRange,
   playCraftSound,
+  usePersistedPhase,
 } from "./craft-ui";
 
 const PHASES = ["识经纬", "穿经", "挑花", "投梭", "校花", "上机"] as const;
@@ -42,7 +43,7 @@ type YunjinCraftProps = {
 };
 
 export function YunjinCraft({ completed, onComplete }: YunjinCraftProps) {
-  const [phase, setPhase] = useState(0);
+  const [phase, setPhase] = usePersistedPhase("yunjin", completed);
   const [feedback, setFeedback] = useState("先弄清经线与纬线的角色，以及「寸锦寸金」的含义。");
   const [quizIndex, setQuizIndex] = useState(0);
   const [warp, setWarp] = useState<string[]>([]);

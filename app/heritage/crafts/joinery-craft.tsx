@@ -11,6 +11,7 @@ import {
   StepRail,
   inRange,
   playCraftSound,
+  usePersistedPhase,
 } from "./craft-ui";
 
 const PHASES = ["识材", "墨线放样", "画卯位", "凿卯制榫", "试装校正", "合榫成架"] as const;
@@ -45,7 +46,7 @@ type JoineryCraftProps = {
 };
 
 export function JoineryCraft({ completed, onComplete }: JoineryCraftProps) {
-  const [phase, setPhase] = useState(0);
+  const [phase, setPhase] = usePersistedPhase("joinery", completed);
   const [feedback, setFeedback] = useState("先认识木材特性，为门架选出合适的主材。");
   const [inkPicks, setInkPicks] = useState<string[]>([]);
   const [mortise, setMortise] = useState(() =>

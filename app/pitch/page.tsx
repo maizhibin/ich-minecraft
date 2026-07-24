@@ -4,7 +4,8 @@ import "./pitch.css";
 
 export const metadata: Metadata = {
   title: "DTCoder Blocklands｜项目路演",
-  description: "让非遗知识、工序与传承进入体素沙盒玩法。",
+  // 路演摘要：七项工坊 + 孩子视角叙事
+  description: "用孩子的视角走进七座非遗工坊：动手学工序，看见世界因学习而长大。",
 };
 
 export default function PitchPage() {

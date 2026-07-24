@@ -1,11 +1,17 @@
 "use client";
 
-// 博物馆学习档案壳：进度、页签与资料来源；具体玩法拆到 crafts/*。
+// 博物馆学习档案壳：芯片页签、传承人讲述、展柜编号、节庆演练入口。
 
+import { useState, useSyncExternalStore } from "react";
 import {
   HERITAGE_TRACKS,
+  MUSEUM_EXHIBIT_SLOTS,
   SOURCE_LINKS,
   countCompleted,
+  isFestivalDone,
+  loadCraftDraft,
+  markFestivalDone,
+  subscribeHeritageProgress,
   type HeritageProgress,
   type HeritageTrack,
 } from "./heritage";
@@ -16,9 +22,13 @@ import { ShadowCraft } from "./heritage/crafts/shadow-craft";
 import { PorcelainCraft } from "./heritage/crafts/porcelain-craft";
 import { PapercutCraft } from "./heritage/crafts/papercut-craft";
 import { YunjinCraft } from "./heritage/crafts/yunjin-craft";
+import { FestivalCraft } from "./heritage/crafts/festival-craft";
+import { CraftNarrator } from "./heritage/crafts/craft-narrator";
 import { playCraftSound } from "./heritage/crafts/craft-ui";
 
 export type { HeritageTrack };
+
+type PanelMode = "craft" | "festival";
 
 type HeritageWorkshopProps = {
   open: boolean;
@@ -27,7 +37,6 @@ type HeritageWorkshopProps = {
   onClose: () => void;
   onSelectTrack: (track: HeritageTrack) => void;
   onComplete: (track: HeritageTrack) => void;
-  /** 清除本地学习进度并刷新世界（由父组件执行落盘与重载） */
   onClearProgress: () => void;
 };
 
@@ -40,11 +49,25 @@ export function HeritageWorkshop({
   onComplete,
   onClearProgress,
 }: HeritageWorkshopProps) {
+  const [mode, setMode] = useState<PanelMode>("craft");
+  /** 本会话已点过「开始工序」的项目（跳过讲述） */
+  const [loreStarted, setLoreStarted] = useState<Partial<Record<HeritageTrack, true>>>({});
+  const festivalCompleted = useSyncExternalStore(
+    subscribeHeritageProgress,
+    isFestivalDone,
+    () => false,
+  );
+
   if (!open) return null;
 
   const completedCount = countCompleted(completed);
   const trackTotal = HERITAGE_TRACKS.length;
   const source = SOURCE_LINKS[activeTrack] ?? SOURCE_LINKS.joinery;
+  // 有草稿、已完成或本会话已听完讲述 → 直接进工序
+  const loreDone =
+    completed[activeTrack] ||
+    loadCraftDraft(activeTrack) !== null ||
+    Boolean(loreStarted[activeTrack]);
 
   return (
     <section className="heritage-dialog heritage-dialog-wide" role="dialog" aria-modal="true" aria-labelledby="heritage-title">
@@ -64,21 +87,40 @@ export function HeritageWorkshop({
         <progress max={trackTotal} value={completedCount} />
       </div>
 
-      <nav className="heritage-tabs" aria-label="选择非遗项目">
-        {HERITAGE_TRACKS.map((track) => (
+      {/* 移动端横向芯片栏；桌面仍为左侧列表（CSS 分流） */}
+      <nav className="heritage-tabs heritage-chips" aria-label="选择非遗项目">
+        <div className="heritage-chip-scroll">
+          {HERITAGE_TRACKS.map((track) => (
+            <button
+              key={track.id}
+              type="button"
+              className={mode === "craft" && activeTrack === track.id ? "active" : ""}
+              onClick={() => {
+                playCraftSound("ui");
+                setMode("craft");
+                onSelectTrack(track.id);
+              }}
+            >
+              <span>{track.index}</span>
+              {track.label}
+              {completed[track.id] && <b>完成</b>}
+            </button>
+          ))}
           <button
-            key={track.id}
-            className={activeTrack === track.id ? "active" : ""}
+            type="button"
+            className={mode === "festival" ? "active" : ""}
             onClick={() => {
               playCraftSound("ui");
-              onSelectTrack(track.id);
+              setMode("festival");
             }}
           >
-            <span>{track.index}</span> {track.label} {completed[track.id] && <b>已完成</b>}
+            <span>节</span>
+            村落节庆
+            {festivalCompleted && <b>完成</b>}
           </button>
-        ))}
-        {/* 方位一览：方便找到窑场 / 剪纸案 / 织机廊等新增落点 */}
-        <div className="heritage-map" aria-label="工坊方位">
+        </div>
+
+        <div className="heritage-map" aria-label="工坊方位与展柜">
           <strong>工坊方位</strong>
           {HERITAGE_TRACKS.map((track) => (
             <p key={`map-${track.id}`}>
@@ -87,42 +129,72 @@ export function HeritageWorkshop({
               {completed[track.id] ? " · 已完成" : ""}
             </p>
           ))}
+          <strong>博物馆展柜编号</strong>
+          {MUSEUM_EXHIBIT_SLOTS.map((slot) => (
+            <p key={slot.trackId}>
+              <span>{slot.trackIndex}</span>
+              {slot.label} · 展厅柜位
+            </p>
+          ))}
         </div>
       </nav>
 
-      {activeTrack === "joinery" && (
-        <JoineryCraft completed={completed.joinery} onComplete={() => onComplete("joinery")} />
-      )}
-      {activeTrack === "printing" && (
-        <PrintingCraft completed={completed.printing} onComplete={() => onComplete("printing")} />
-      )}
-      {activeTrack === "tea" && (
-        <TeaCraft completed={completed.tea} onComplete={() => onComplete("tea")} />
-      )}
-      {activeTrack === "shadow" && (
-        <ShadowCraft completed={completed.shadow} onComplete={() => onComplete("shadow")} />
-      )}
-      {activeTrack === "porcelain" && (
-        <PorcelainCraft completed={completed.porcelain} onComplete={() => onComplete("porcelain")} />
-      )}
-      {activeTrack === "papercut" && (
-        <PapercutCraft completed={completed.papercut} onComplete={() => onComplete("papercut")} />
-      )}
-      {activeTrack === "yunjin" && (
-        <YunjinCraft completed={completed.yunjin} onComplete={() => onComplete("yunjin")} />
+      {mode === "festival" ? (
+        <FestivalCraft
+          completed={festivalCompleted}
+          onComplete={() => {
+            markFestivalDone();
+            window.dispatchEvent(new CustomEvent("festival-complete"));
+          }}
+        />
+      ) : !loreDone && !completed[activeTrack] ? (
+        <article className="heritage-content craft-rich">
+          <CraftNarrator
+            track={activeTrack}
+            onContinue={() => setLoreStarted((prev) => ({ ...prev, [activeTrack]: true }))}
+          />
+        </article>
+      ) : (
+        <>
+          {activeTrack === "joinery" && (
+            <JoineryCraft completed={completed.joinery} onComplete={() => onComplete("joinery")} />
+          )}
+          {activeTrack === "printing" && (
+            <PrintingCraft completed={completed.printing} onComplete={() => onComplete("printing")} />
+          )}
+          {activeTrack === "tea" && (
+            <TeaCraft completed={completed.tea} onComplete={() => onComplete("tea")} />
+          )}
+          {activeTrack === "shadow" && (
+            <ShadowCraft completed={completed.shadow} onComplete={() => onComplete("shadow")} />
+          )}
+          {activeTrack === "porcelain" && (
+            <PorcelainCraft completed={completed.porcelain} onComplete={() => onComplete("porcelain")} />
+          )}
+          {activeTrack === "papercut" && (
+            <PapercutCraft completed={completed.papercut} onComplete={() => onComplete("papercut")} />
+          )}
+          {activeTrack === "yunjin" && (
+            <YunjinCraft completed={completed.yunjin} onComplete={() => onComplete("yunjin")} />
+          )}
+        </>
       )}
 
       <footer className="heritage-source">
         <div className="heritage-source-row">
           <span>
             资料参考：
-            <a href={source.href} target="_blank" rel="noreferrer">{source.label}</a>
+            {mode === "festival" ? (
+              "节庆演练为教学化社区协作抽象，资料见各工坊权威链接。"
+            ) : (
+              <a href={source.href} target="_blank" rel="noreferrer">{source.label}</a>
+            )}
           </span>
           <button
             type="button"
             className="heritage-clear"
             onClick={() => {
-              if (window.confirm("清除本机学习进度？世界奖励将在刷新后回滚。")) {
+              if (window.confirm("清除本机学习进度与节庆档案？世界奖励将在刷新后回滚。")) {
                 onClearProgress();
               }
             }}

@@ -327,17 +327,30 @@ body:has(.pitch-deck) {
 .loop-track p { color: var(--pitch-muted); font-size: 10px; line-height: 1.5; }
 .loop-caption { position: absolute; z-index: 2; bottom: 9vh; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,.68); font-size: 10px; white-space: nowrap; }
 
+/* 七项工坊：标题置顶，卡片 4+3 排布，保证单屏可读 */
 .craft-layout { position: relative; z-index: 2; display: grid; width: 100%; grid-template-columns: .68fr 1.32fr; gap: 7vw; align-items: center; }
+.craft-layout-wide { grid-template-columns: 1fr; gap: 28px; align-items: start; }
+.craft-layout-wide .craft-heading { max-width: 920px; }
 .craft-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.craft-grid-seven { grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .craft-card { position: relative; min-height: 250px; padding: 24px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.035); }
+.craft-grid-seven .craft-card { min-height: 168px; padding: 16px 16px 42px; }
 .craft-card > span { color: var(--pitch-accent); font-size: 10px; }
 .craft-card h3 { position: relative; z-index: 2; margin: 44px 0 9px; font: 750 clamp(21px, 1.7vw, 30px)/1 var(--font-geist-sans); }
+.craft-grid-seven .craft-card h3 { margin: 28px 0 6px; font-size: clamp(15px, 1.2vw, 20px); }
 .craft-card p { position: relative; z-index: 2; color: #c5cabf; font-size: 10px; }
+.craft-grid-seven .craft-card p { font-size: 9px; line-height: 1.45; }
 .craft-card b { position: absolute; right: 20px; bottom: 18px; left: 20px; padding-top: 11px; border-top: 1px solid rgba(255,255,255,.1); color: var(--pitch-accent); font-size: 9px; font-weight: 500; }
+.craft-grid-seven .craft-card b { right: 14px; bottom: 12px; left: 14px; padding-top: 8px; font-size: 8px; }
 .craft-pixel { position: absolute; top: 28px; right: 28px; width: 50px; height: 50px; background: #98663d; box-shadow: inset -12px -10px #684329, 6px 6px #05070566; }
+.craft-grid-seven .craft-pixel { top: 14px; right: 14px; width: 34px; height: 34px; }
 .craft-card.type .craft-pixel { background: #d1bd79; box-shadow: inset -12px -10px #92723f, 6px 6px #05070566; }
 .craft-card.tea .craft-pixel { border-radius: 50% 0 50% 50%; background: #77a94b; box-shadow: inset -12px -10px #426a36, 6px 6px #05070566; transform: rotate(-22deg); }
 .craft-card.shadow .craft-pixel { background: #d85c37; clip-path: polygon(50% 0, 100% 26%, 75% 100%, 25% 100%, 0 26%); }
+/* 新增三项：青瓷釉色、剪纸朱红、云锦金丝 */
+.craft-card.porcelain .craft-pixel { background: #6fad9a; box-shadow: inset -12px -10px #3f7568, 6px 6px #05070566; border-radius: 50% 50% 12% 50%; }
+.craft-card.papercut .craft-pixel { background: #c23b2e; box-shadow: inset -12px -10px #7a241c, 6px 6px #05070566; clip-path: polygon(50% 8%, 62% 38%, 94% 38%, 68% 58%, 78% 90%, 50% 70%, 22% 90%, 32% 58%, 6% 38%, 38% 38%); }
+.craft-card.yunjin .craft-pixel { background: linear-gradient(135deg, #f0d78c, #c9953a); box-shadow: inset -12px -10px #8a6428, 6px 6px #05070566; }
 
 .experience-layout { position: absolute; inset: 0; }
 .experience-layout .voxel-scene { right: 52%; }
@@ -346,12 +359,13 @@ body:has(.pitch-deck) {
 .experience-layout .museum-roof { right: 9%; }
 .experience-layout .museum-door { right: calc(12% + 135px); }
 .experience-copy { position: absolute; z-index: 6; top: 50%; right: 8vw; width: 44%; transform: translateY(-50%); }
-.experience-copy h2 { font-size: clamp(36px, 3.8vw, 62px); }
-.experience-list { display: grid; margin-top: 32px; }
-.experience-list article { display: grid; grid-template-columns: 40px 1fr; gap: 18px; padding: 17px 0; border-top: 1px solid rgba(255,255,255,.13); }
+.experience-copy h2 { font-size: clamp(32px, 3.4vw, 54px); }
+/* 四层体验条目略压缩，保证单屏完整展示 */
+.experience-list { display: grid; margin-top: 22px; }
+.experience-list article { display: grid; grid-template-columns: 40px 1fr; gap: 14px; padding: 11px 0; border-top: 1px solid rgba(255,255,255,.13); }
 .experience-list article > span { color: var(--pitch-accent); font-size: 10px; }
-.experience-list h3 { margin-bottom: 5px; font: 700 17px/1 var(--font-geist-sans); }
-.experience-list p { margin-bottom: 0; color: var(--pitch-muted); font: 13px/1.55 var(--font-geist-sans); }
+.experience-list h3 { margin-bottom: 4px; font: 700 15px/1 var(--font-geist-sans); }
+.experience-list p { margin-bottom: 0; color: var(--pitch-muted); font: 12px/1.5 var(--font-geist-sans); }
 
 .tech-layout { position: relative; z-index: 2; display: grid; width: 100%; grid-template-columns: .85fr 1.15fr; gap: 7vw; align-items: center; }
 .tech-stack { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -393,7 +407,9 @@ body:has(.pitch-deck) {
   .contrast-card { min-height: 235px; }
   .contrast-card strong { margin-top: 38px; }
   .craft-grid { grid-template-columns: repeat(4, 1fr); }
+  .craft-grid-seven { grid-template-columns: repeat(3, 1fr); }
   .craft-card { min-height: 220px; padding: 17px; }
+  .craft-grid-seven .craft-card { min-height: 150px; }
   .craft-card h3 { margin-top: 52px; font-size: 17px; }
   .craft-pixel { top: 18px; right: 18px; width: 38px; height: 38px; }
   .experience-layout .voxel-scene { right: 58%; }
@@ -439,8 +455,11 @@ body:has(.pitch-deck) {
   .craft-layout { gap: 12px; }
   .craft-heading p { display: none; }
   .craft-grid { grid-template-columns: 1fr 1fr; gap: 7px; }
+  .craft-grid-seven { grid-template-columns: 1fr 1fr; }
   .craft-card { min-height: 165px; padding: 13px; }
+  .craft-grid-seven .craft-card { min-height: 128px; padding: 11px 11px 34px; }
   .craft-card h3 { margin: 42px 0 6px; font-size: 15px; }
+  .craft-grid-seven .craft-card h3 { margin: 30px 0 4px; font-size: 13px; }
   .craft-card p { font-size: 8px; }
   .craft-card b { right: 12px; bottom: 10px; left: 12px; font-size: 7px; }
   .craft-pixel { width: 28px; height: 28px; }
