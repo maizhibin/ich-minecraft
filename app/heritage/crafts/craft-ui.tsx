@@ -73,6 +73,7 @@ export function CraftShell({ tag, title, lead, children }: CraftShellProps) {
         <span className="craft-tag">{tag}</span>
         <h3>{title}</h3>
         <p>{lead}</p>
+        <p className="craft-eta">建议用时约 5—8 分钟 · 出错只重试当前步骤</p>
       </div>
       {children}
     </article>

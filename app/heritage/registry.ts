@@ -44,6 +44,36 @@ export const HERITAGE_TRACKS: HeritageTrackMeta[] = [
       href: "https://ich.unesco.org/en/RL/chinese-shadow-puppetry-00421",
     },
   },
+  {
+    id: "porcelain",
+    index: "05",
+    label: "龙泉青瓷",
+    workshop: { x: 52.5, z: 10.5, label: "龙泉窑场", guide: "右前方龙泉窑场" },
+    source: {
+      label: "UNESCO 龙泉青瓷传统烧制技艺",
+      href: "https://ich.unesco.org/en/RL/traditional-firing-technology-of-longquan-celadon-00205",
+    },
+  },
+  {
+    id: "papercut",
+    index: "06",
+    label: "中国剪纸",
+    workshop: { x: -5.5, z: 8.5, label: "剪纸案台", guide: "左前方茶馆旁剪纸案" },
+    source: {
+      label: "UNESCO 中国剪纸",
+      href: "https://ich.unesco.org/en/RL/chinese-paper-cut-00219",
+    },
+  },
+  {
+    id: "yunjin",
+    index: "07",
+    label: "南京云锦",
+    workshop: { x: 48.5, z: -12.5, label: "云锦织机廊", guide: "右前方博物馆织机廊" },
+    source: {
+      label: "UNESCO 南京云锦木机妆花手工织造技艺",
+      href: "https://ich.unesco.org/en/RL/craftsmanship-of-nanjing-yunjin-brocade-00200",
+    },
+  },
 ];
 
 export const HERITAGE_TRACK_IDS = HERITAGE_TRACKS.map((track) => track.id);
@@ -57,13 +87,16 @@ export const SOURCE_LINKS = Object.fromEntries(
   HERITAGE_TRACKS.map((track) => [track.id, track.source]),
 ) as Record<HeritageTrack, HeritageTrackMeta["source"]>;
 
-/** 空进度：四项均为未完成 */
+/** 空进度：全部未完成 */
 export function createEmptyProgress(): HeritageProgress {
   return {
     joinery: false,
     printing: false,
     tea: false,
     shadow: false,
+    porcelain: false,
+    papercut: false,
+    yunjin: false,
   };
 }
 

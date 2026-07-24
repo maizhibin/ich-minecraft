@@ -14,6 +14,9 @@
 - 木活字镜像问答、排字、校对、上墨、覆纸与拓印
 - 茶园、制茶各步操作、茶馆奉茶与口味应答
 - 皮影角色、关节、姿态、背光、录拍排练与开演
+- 龙泉青瓷：备泥、练泥、制坯、晾坯、施釉、装窑、窑温曲线与开窑
+- 中国剪纸：对称像素剪刻、展开校对与贴窗
+- 南京云锦：经纬问答、穿经、挑花、投梭、校花与上机
 - 成长型博物馆进度及世界奖励
 - 本机学习进度持久化（刷新可恢复；图鉴内可清除）
 - Web Audio API 程序化原创 BGM
@@ -41,6 +44,9 @@
 - 木活字印刷台：博物馆展厅东侧
 - 传统制茶工坊：出生点左前方茶园和茶馆
 - 中国皮影戏台：茶园北侧木制戏台
+- 龙泉窑场：博物馆东侧广场
+- 剪纸案台：茶馆东侧
+- 云锦织机廊：博物馆东南延伸
 - 直接工坊交互范围为 7 个方块
 - 进入博物馆后，无需站在精确坐标上，按 `E` 会自动选择最近工坊
 
@@ -81,6 +87,8 @@ npm run build
 - `AGENTS.md`：项目协作、性能、非遗资料和质量检查规范
 - `docs/ICH-GAME-DESIGN.md`：非遗玩法设计、技术方案和验收标准
 - `docs/ROADMAP.md`：后续迭代版本与本轮系统奠基验收清单
+- `docs/POST-V3.md`：七项工坊之后的可选方向
+- `docs/ACCEPTANCE-NOTES.md`：v1—v3 快速验收笔记
 
 ## 设计文档
 
@@ -94,3 +102,6 @@ npm run build
 - [文化和旅游部：非物质文化遗产数字化保护系列行业标准](https://zwgk.mct.gov.cn/zfxxgkml/kjjy/202308/t20230804_946421.html)
 - [UNESCO：中国传统制茶技艺及相关习俗](https://ich.unesco.org/en/RL/traditional-tea-processing-techniques-and-associated-social-practices-in-china-01884)
 - [UNESCO：中国皮影戏](https://ich.unesco.org/en/RL/chinese-shadow-puppetry-00421)
+- [UNESCO：龙泉青瓷传统烧制技艺](https://ich.unesco.org/en/RL/traditional-firing-technology-of-longquan-celadon-00205)
+- [UNESCO：中国剪纸](https://ich.unesco.org/en/RL/chinese-paper-cut-00219)
+- [UNESCO：南京云锦木机妆花手工织造技艺](https://ich.unesco.org/en/RL/craftsmanship-of-nanjing-yunjin-brocade-00200)

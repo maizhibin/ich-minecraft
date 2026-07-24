@@ -20,6 +20,7 @@ import {
   subscribeHeritageProgress,
   type HeritageTrack,
 } from "./heritage";
+import { heritageSiteBlock } from "./heritage/world-sites";
 
 type BlockType = "grass" | "dirt" | "stone" | "sand" | "wood" | "leaves";
 type Hit = { x: number; y: number; z: number; normal: THREE.Vector3 };
@@ -152,7 +153,7 @@ function museumBlock(x: number, y: number, z: number): BlockType | null | undefi
   if (museumZ === 18 && y === 17 && museumX >= 15 && museumX <= 29) return "stone";
   if (museumZ === 18 && y === 18 && museumX >= 19 && museumX <= 25) return "stone";
 
-  // 十二座主题展台分布在两侧展廊。
+  // 十二座主题展台分布在两侧展廊（含青瓷、剪纸、云锦主题色块）。
   const exhibits: Array<{ x: number; z: number; block: BlockType }> = [
     { x: 11, z: 1, block: "leaves" },
     { x: 17, z: 1, block: "stone" },
@@ -171,44 +172,18 @@ function museumBlock(x: number, y: number, z: number): BlockType | null | undefi
   if (exhibit && y === 5) return "sand";
   if (exhibit && y === 6) return exhibit.block;
 
+  // 东廊新增：青瓷、剪纸、云锦示意展柜（教学化色块，非真实藏品）
+  if (museumX === 35 && museumZ === 4 && y === 5) return "sand";
+  if (museumX === 35 && museumZ === 4 && y === 6) return "leaves";
+  if (museumX === 35 && museumZ === 10 && y === 5) return "sand";
+  if (museumX === 35 && museumZ === 10 && y === 6) return "wood";
+  if (museumX === 35 && museumZ === 16 && y === 5) return "sand";
+  if (museumX === 35 && museumZ === 16 && y === 6) return "stone";
+
   // 中央挑空大厅中的树形主展品和基座。
   if (museumX >= 21 && museumX <= 23 && museumZ >= 7 && museumZ <= 9 && y === 5) return "sand";
   if (museumX === 22 && museumZ === 8 && y >= 6 && y <= 10) return "wood";
   if (y >= 9 && y <= 12 && Math.abs(museumX - 22) + Math.abs(museumZ - 8) <= 3) return "leaves";
-
-  return undefined;
-}
-
-function heritageSiteBlock(x: number, y: number, z: number): BlockType | null | undefined {
-  // 茶园：成行茶垄、泥土根基与低矮茶树。
-  const inTeaGarden = x >= -44 && x <= -24 && z >= 0 && z <= 18;
-  const teaPlant = inTeaGarden && (x + 44) % 3 !== 2 && z % 3 !== 2;
-  if (teaPlant && y === 4) return "dirt";
-  if (teaPlant && y === 5) return "leaves";
-
-  // 开放式茶馆，面向茶园，并设置制茶案台和茶客。
-  const inTeaHouse = x >= -21 && x <= -8 && z >= 2 && z <= 14;
-  if (inTeaHouse && y === 4) return "wood";
-  if (
-    inTeaHouse &&
-    y >= 5 &&
-    y <= 9 &&
-    ((x === -21 || x === -8) && (z === 2 || z === 14))
-  ) return "wood";
-  if (inTeaHouse && y === 10) return "sand";
-  if ((x === -15 || x === -14) && z === 6 && y === 5) return "wood";
-  if (x === -11 && z === 10 && y === 5) return "sand";
-  if (x === -11 && z === 10 && y === 6) return "dirt";
-  if (x === -11 && z === 10 && y === 7) return "sand";
-
-  // 皮影戏台：木台、半透明感幕布、后台操纵案与挑檐。
-  const inShadowStage = x >= -44 && x <= -26 && z >= -16 && z <= -3;
-  if (inShadowStage && y === 4) return "wood";
-  if (z === -16 && x >= -42 && x <= -28 && y >= 5 && y <= 11) return "sand";
-  if (inShadowStage && y >= 5 && y <= 12 && [ -44, -26 ].includes(x) && [ -16, -3 ].includes(z)) return "wood";
-  if (inShadowStage && y === 13) return "wood";
-  if ((x === -34 || x === -33) && z === -7 && y === 5) return "stone";
-  if (x === -33 && z === -7 && y === 6) return "wood";
 
   return undefined;
 }
@@ -959,7 +934,7 @@ export function VoxelGame() {
         <section className="start-card">
           <span className="eyebrow">{hasPlayed ? "游戏已暂停" : "Simplex · FBM 体素世界"}</span>
           <strong>{hasPlayed ? "暂停探索" : "进入方块世界"}</strong>
-          <small>{hasPlayed ? "进度已自动保存在本机；点击继续返回世界" : "探索博物馆、茶园茶馆与皮影戏台"}</small>
+          <small>{hasPlayed ? "进度已自动保存在本机；点击继续返回世界" : "探索博物馆、窑场、茶园、剪纸案与织机廊"}</small>
           {!hasPlayed && (
             <div className="loading-track" aria-label={`世界加载 ${loadProgress}%`}>
               <i style={{ width: `${loadProgress}%` }} /><span>{loadProgress}%</span>
@@ -976,6 +951,7 @@ export function VoxelGame() {
         <span><kbd>左键</kbd> 放置</span><span><kbd>右键</kbd> 破坏</span>
         <span><kbd>1—6 / 滚轮</kbd> 切换方块</span>
         <span><kbd>E / H</kbd> 工坊 / 非遗图鉴</span>
+        <span>新工坊：窑场 · 剪纸案 · 织机廊</span>
       </div>
 
       <nav className="hotbar" aria-label="选择方块">

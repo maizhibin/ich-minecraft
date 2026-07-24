@@ -13,6 +13,9 @@ import { JoineryCraft } from "./heritage/crafts/joinery-craft";
 import { PrintingCraft } from "./heritage/crafts/printing-craft";
 import { TeaCraft } from "./heritage/crafts/tea-craft";
 import { ShadowCraft } from "./heritage/crafts/shadow-craft";
+import { PorcelainCraft } from "./heritage/crafts/porcelain-craft";
+import { PapercutCraft } from "./heritage/crafts/papercut-craft";
+import { YunjinCraft } from "./heritage/crafts/yunjin-craft";
 import { playCraftSound } from "./heritage/crafts/craft-ui";
 
 export type { HeritageTrack };
@@ -44,7 +47,7 @@ export function HeritageWorkshop({
   const source = SOURCE_LINKS[activeTrack] ?? SOURCE_LINKS.joinery;
 
   return (
-    <section className="heritage-dialog" role="dialog" aria-modal="true" aria-labelledby="heritage-title">
+    <section className="heritage-dialog heritage-dialog-wide" role="dialog" aria-modal="true" aria-labelledby="heritage-title">
       <header className="heritage-header">
         <div>
           <span className="eyebrow">非遗工坊 · 活态传承</span>
@@ -74,6 +77,17 @@ export function HeritageWorkshop({
             <span>{track.index}</span> {track.label} {completed[track.id] && <b>已完成</b>}
           </button>
         ))}
+        {/* 方位一览：方便找到窑场 / 剪纸案 / 织机廊等新增落点 */}
+        <div className="heritage-map" aria-label="工坊方位">
+          <strong>工坊方位</strong>
+          {HERITAGE_TRACKS.map((track) => (
+            <p key={`map-${track.id}`}>
+              <span>{track.index}</span>
+              {track.workshop.label} · {track.workshop.guide}
+              {completed[track.id] ? " · 已完成" : ""}
+            </p>
+          ))}
+        </div>
       </nav>
 
       {activeTrack === "joinery" && (
@@ -87,6 +101,15 @@ export function HeritageWorkshop({
       )}
       {activeTrack === "shadow" && (
         <ShadowCraft completed={completed.shadow} onComplete={() => onComplete("shadow")} />
+      )}
+      {activeTrack === "porcelain" && (
+        <PorcelainCraft completed={completed.porcelain} onComplete={() => onComplete("porcelain")} />
+      )}
+      {activeTrack === "papercut" && (
+        <PapercutCraft completed={completed.papercut} onComplete={() => onComplete("papercut")} />
+      )}
+      {activeTrack === "yunjin" && (
+        <YunjinCraft completed={completed.yunjin} onComplete={() => onComplete("yunjin")} />
       )}
 
       <footer className="heritage-source">

@@ -1,5 +1,5 @@
 // 技艺完成后的世界体素奖励。
-// 坐标与方块类型必须与改前 applyHeritageReward 保持一致，避免回归。
+// 既有四项坐标保持不变；新增三项写入各自工坊附近展陈。
 
 import type { HeritageTrack } from "./types";
 
@@ -19,7 +19,6 @@ export function applyHeritageReward(
   markDirtyAt: MarkDirtyAt,
 ) {
   if (track === "joinery") {
-    // 博物馆旁木构示范门架
     for (let y = 4; y <= 9; y += 1) {
       setBlock(8, y, 4, "wood");
       setBlock(14, y, 4, "wood");
@@ -36,7 +35,6 @@ export function applyHeritageReward(
   }
 
   if (track === "printing") {
-    // 印刷展陈架
     for (let x = 40; x <= 44; x += 1) setBlock(x, 5, 2, "sand");
     for (let y = 6; y <= 10; y += 1) {
       setBlock(40, y, 2, "wood");
@@ -52,7 +50,6 @@ export function applyHeritageReward(
   }
 
   if (track === "tea") {
-    // 茶馆待客茶席与茶园门架
     for (let x = -18; x <= -11; x += 1) setBlock(x, 5, 11, "wood");
     setBlock(-15, 6, 11, "sand");
     setBlock(-14, 6, 11, "sand");
@@ -66,17 +63,65 @@ export function applyHeritageReward(
     return;
   }
 
-  // shadow：戏台角色剪影展陈
-  for (let y = 6; y <= 10; y += 1) {
-    setBlock(-37, y, -15, "wood");
-    setBlock(-31, y, -15, "wood");
+  if (track === "shadow") {
+    for (let y = 6; y <= 10; y += 1) {
+      setBlock(-37, y, -15, "wood");
+      setBlock(-31, y, -15, "wood");
+    }
+    for (let x = -37; x <= -31; x += 1) setBlock(x, 11, -15, "wood");
+    setBlock(-35, 7, -14, "stone");
+    setBlock(-34, 8, -14, "stone");
+    setBlock(-33, 7, -14, "stone");
+    markDirtyAt(-37, -15);
+    markDirtyAt(-31, -14);
+    return;
   }
-  for (let x = -37; x <= -31; x += 1) setBlock(x, 11, -15, "wood");
-  setBlock(-35, 7, -14, "stone");
-  setBlock(-34, 8, -14, "stone");
-  setBlock(-33, 7, -14, "stone");
-  markDirtyAt(-37, -15);
-  markDirtyAt(-31, -14);
+
+  if (track === "porcelain") {
+    // 窑场旁青瓷展架
+    for (let x = 50; x <= 55; x += 1) setBlock(x, 5, 14, "sand");
+    for (let y = 6; y <= 9; y += 1) {
+      setBlock(50, y, 14, "stone");
+      setBlock(55, y, 14, "stone");
+    }
+    for (let x = 50; x <= 55; x += 1) setBlock(x, 10, 14, "wood");
+    setBlock(52, 6, 14, "leaves");
+    setBlock(53, 7, 14, "leaves");
+    setBlock(54, 6, 14, "leaves");
+    markDirtyAt(50, 14);
+    markDirtyAt(55, 14);
+    return;
+  }
+
+  if (track === "papercut") {
+    // 案台旁窗花展陈（红纸感用 leaves 点缀）
+    for (let y = 5; y <= 9; y += 1) {
+      setBlock(-6, y, 11, "wood");
+      setBlock(-4, y, 11, "wood");
+    }
+    setBlock(-5, 6, 11, "leaves");
+    setBlock(-5, 7, 11, "leaves");
+    setBlock(-5, 8, 11, "sand");
+    setBlock(-5, 9, 11, "leaves");
+    markDirtyAt(-6, 11);
+    markDirtyAt(-4, 11);
+    return;
+  }
+
+  if (track === "yunjin") {
+    // 织机廊纹样挂幅
+    for (let x = 46; x <= 50; x += 1) setBlock(x, 5, -14, "wood");
+    for (let y = 6; y <= 10; y += 1) {
+      setBlock(46, y, -14, "wood");
+      setBlock(50, y, -14, "wood");
+    }
+    for (let x = 47; x <= 49; x += 1) {
+      for (let y = 7; y <= 9; y += 1) setBlock(x, y, -14, "sand");
+    }
+    setBlock(48, 8, -14, "leaves");
+    markDirtyAt(46, -14);
+    markDirtyAt(50, -14);
+  }
 }
 
 /** 根据已完成进度批量恢复世界奖励（用于刷新后重放） */

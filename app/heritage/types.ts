@@ -1,7 +1,14 @@
 // 非遗 track 与进度相关的共享类型。
-// 后续新增青瓷 / 剪纸 / 云锦时，只需在此扩展联合类型并在注册表登记。
+// 新增项目时：扩展联合类型，并在 registry / world-rewards / crafts 中登记。
 
-export type HeritageTrack = "joinery" | "printing" | "tea" | "shadow";
+export type HeritageTrack =
+  | "joinery"
+  | "printing"
+  | "tea"
+  | "shadow"
+  | "porcelain"
+  | "papercut"
+  | "yunjin";
 
 export type HeritageWorkshopSpot = {
   x: number;

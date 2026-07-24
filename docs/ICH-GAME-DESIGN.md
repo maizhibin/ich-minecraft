@@ -131,6 +131,54 @@
 
 真实中国皮影戏使用皮革或纸制彩色影人，通过操纵杆在背光幕布前表演，并结合音乐与演唱；不同传统的造型、唱腔和操纵方式并不相同。当前玩法只表达其基本构成。
 
+### 4.6 龙泉青瓷
+
+位置：博物馆东侧龙泉窑场。
+
+交互流程：
+
+1. 备泥（黏土 / 石英 / 草木灰比例）
+2. 练泥拍点
+3. 制坯选形并修坯
+4. 晾坯至目标含水
+5. 选梅子青并施釉
+6. 三层装窑
+7. 窑温曲线：升温 → 保温 → 降温
+8. 开窑验坯
+
+完成后获得「青瓷窑火」印记，窑场旁生成青瓷展架。窑温与配方均为教学抽象。
+
+### 4.7 中国剪纸
+
+位置：茶馆东侧剪纸案台。
+
+交互流程：
+
+1. 选大红纸
+2. 选左右或四折对称
+3. 民俗问答
+4. 半边 / 一角像素剪刻（可撤销）
+5. 展开与目标比对（≥85%）
+6. 修整（≥90%）
+7. 贴窗入藏
+
+完成后获得「纸上乾坤」印记，案台旁出现窗花展陈。
+
+### 4.8 南京云锦
+
+位置：博物馆东南云锦织机廊。
+
+交互流程：
+
+1. 经纬与「寸锦寸金」问答
+2. 按序穿经
+3. 挑花网格对照示意
+4. 投梭节奏
+5. 校花找出错格
+6. 确认上机
+
+完成后获得「寸锦寸金」印记，织机廊出现纹样挂幅。强调技艺与知识，不做炒作藏品叙事。
+
 ## 5. 操作
 
 - `WASD`：以角色视角为基准移动
@@ -191,6 +239,7 @@
 - [x] 制茶各工序为独立操作，并在茶馆按序奉茶与应答。
 - [x] 皮影戏包含角色、关节、姿态、灯光、录拍、排练与开演。
 - [x] 茶园、茶馆和皮影戏台随区块加载并可碰撞交互。
+- [x] 窑场、剪纸案与织机廊随区块加载并可碰撞交互。
 - [x] BGM 只在用户交互后播放，并提供静音控制。
 - [x] 放置、破坏、跳跃和非遗操作拥有反馈音效。
 - [x] 博物馆进度和完成状态即时更新。
@@ -198,15 +247,20 @@
 - [x] ESLint 与生产构建通过。
 - [x] 学习进度可持久化到本机，刷新后恢复；可从博物馆档案清除。
 - [x] 博物馆进度分母由非遗注册表推导，不再写死为 4。
+- [x] 龙泉青瓷含窑温三段曲线，失败本步重试。
+- [x] 剪纸对称展开与目标相似度校验通过后方可入藏。
+- [x] 云锦穿经、挑花与校花规则明确，失败本步重试。
+- [x] 博物馆东廊有青瓷 / 剪纸 / 云锦示意展柜色块。
+- [x] 通往新工坊的简易沙径路标已铺设。
 
 ## 8. 后续路线
 
 详见 [迭代路线图](ROADMAP.md)。摘要：
 
-0. **v0.5 系统奠基**：非遗注册表、`localStorage` 进度持久化、世界奖励配置化（本轮）。
-1. **v1 龙泉青瓷**：见 [docs/crafts/v1-longquan-celadon.md](crafts/v1-longquan-celadon.md)。
-2. **v2 中国剪纸**：见 [docs/crafts/v2-paper-cutting.md](crafts/v2-paper-cutting.md)。
-3. **v3 南京云锦**：见 [docs/crafts/v3-nanjing-yunjin.md](crafts/v3-nanjing-yunjin.md)。
+0. **v0.5 系统奠基**：已完成。
+1. **v1 龙泉青瓷**：已完成，见 [docs/crafts/v1-longquan-celadon.md](crafts/v1-longquan-celadon.md)。
+2. **v2 中国剪纸**：已完成，见 [docs/crafts/v2-paper-cutting.md](crafts/v2-paper-cutting.md)。
+3. **v3 南京云锦**：已完成，见 [docs/crafts/v3-nanjing-yunjin.md](crafts/v3-nanjing-yunjin.md)。
 4. 节庆事件：多人准备、装饰、表演和村落评价。
 5. 将茶类、产区和加工差异拆分为经过专家复核的进阶路线。
 6. 为皮影戏增加唱腔、乐器、多人操纵和地方流派档案。
@@ -217,6 +271,7 @@
 - 学习进度写入本机 `localStorage`，刷新后恢复；图鉴内可清除进度。
 - 完成后的体素奖励由 `app/heritage/world-rewards.ts` 统一写入，加载时按存档重放。
 - 博物馆进度分母由注册表长度推导，便于后续追加项目。
+- 加厚玩法组件位于 `app/heritage/crafts/`。
 
 ## 9. 资料来源
 
@@ -227,4 +282,7 @@
 - [文化和旅游部：非物质文化遗产数字化保护系列行业标准](https://zwgk.mct.gov.cn/zfxxgkml/kjjy/202308/t20230804_946421.html)
 - [UNESCO：中国传统制茶技艺及相关习俗](https://ich.unesco.org/en/RL/traditional-tea-processing-techniques-and-associated-social-practices-in-china-01884)
 - [UNESCO：中国皮影戏](https://ich.unesco.org/en/RL/chinese-shadow-puppetry-00421)
+- [UNESCO：龙泉青瓷传统烧制技艺](https://ich.unesco.org/en/RL/traditional-firing-technology-of-longquan-celadon-00205)
+- [UNESCO：中国剪纸](https://ich.unesco.org/en/RL/chinese-paper-cut-00219)
+- [UNESCO：南京云锦木机妆花手工织造技艺](https://ich.unesco.org/en/RL/craftsmanship-of-nanjing-yunjin-brocade-00200)
 - [MDN：Web Audio API 最佳实践](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Best_practices)
