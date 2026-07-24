@@ -45,6 +45,16 @@ export function heritageSiteBlock(
   // 茶馆到剪纸案的短径
   if (z === 8 && x >= -10 && x <= -8 && y === 4) return "sand";
 
+  // 简易木柱路标：窑场入口（沙径尽头）
+  if (x === 47 && z === 10 && y >= 5 && y <= 7) return "wood";
+  if (x === 47 && z === 10 && y === 8) return "sand";
+  // 简易木柱路标：织机廊入口
+  if (x === 48 && z === -8 && y >= 5 && y <= 7) return "wood";
+  if (x === 48 && z === -8 && y === 8) return "leaves";
+  // 简易木柱路标：剪纸案旁
+  if (x === -8 && z === 8 && y >= 5 && y <= 7) return "wood";
+  if (x === -8 && z === 8 && y === 8) return "leaves";
+
   // 龙泉窑场：窑炉、晾坯架与釉缸（博物馆东侧广场）
   const inKilnYard = x >= 48 && x <= 58 && z >= 6 && z <= 16;
   if (inKilnYard && y === 4) return "sand";

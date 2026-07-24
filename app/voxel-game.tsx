@@ -21,6 +21,9 @@ import {
   type HeritageTrack,
 } from "./heritage";
 import { heritageSiteBlock } from "./heritage/world-sites";
+import { resolveAmbientZone } from "./heritage/ambient-zones";
+import { createWorldNpcSystem } from "./heritage/world-npcs";
+import { createVoxelSky, SKY_HORIZON } from "./voxel-sky";
 
 type BlockType = "grass" | "dirt" | "stone" | "sand" | "wood" | "leaves";
 type Hit = { x: number; y: number; z: number; normal: THREE.Vector3 };
@@ -95,7 +98,35 @@ function terrainHeight(x: number, z: number) {
 
 function isTreeCenter(x: number, z: number) {
   if (Math.abs(x) <= 24 && Math.abs(z) <= 18) return false;
-  return hash(x, z) > 0.965 && terrainHeight(x, z) > 4;
+  // 略增树木密度，仍避开中央核心区，控制区块面数
+  return hash(x, z) > 0.955 && terrainHeight(x, z) > 4;
+}
+
+/** 地表色块：旱斑沙地 / 露岩，仅用于非广场草地顶面 */
+function surfaceBlockAt(x: number, z: number): BlockType {
+  const patch = hash(x * 3 + 11, z * 5 + 7);
+  const moisture = fbm(x * 0.6, z * 0.6);
+  if (patch > 0.94 && moisture < -0.15) return "sand";
+  if (patch > 0.9 && moisture > 0.35) return "stone";
+  return "grass";
+}
+
+/**
+ * 花草灌木装饰：草地上方偶发 1–2 格树叶。
+ * 避开近广场核心与树干中心，避免堵路。
+ */
+function decorationBlock(x: number, y: number, z: number): BlockType | null {
+  if (Math.abs(x) <= 24 && Math.abs(z) <= 18) return null;
+  if (isCentralPlaza(x, z)) return null;
+  if (isTreeCenter(x, z)) return null;
+  const height = terrainHeight(x, z);
+  if (surfaceBlockAt(x, z) !== "grass") return null;
+  const roll = hash(x + 41, z + 97);
+  // 矮花草：地表上一格
+  if (roll > 0.91 && y === height + 1) return "leaves";
+  // 矮灌木：两格高，概率更低
+  if (roll > 0.975 && y >= height + 1 && y <= height + 2) return "leaves";
+  return null;
 }
 
 const letterBlocks = new Set<string>();
@@ -211,8 +242,24 @@ function createTextureAtlas() {
       for (let x = 2; x < tileSize; x += 5) context.fillRect(tile * tileSize + x, 0, 1, tileSize);
     }
     if (block.type === "grass") {
-      context.fillStyle = "rgba(218,255,109,.18)";
-      context.fillRect(tile * tileSize, 1, tileSize, 2);
+      // 顶面高光条 + 稀疏黄绿斑点，让草地不那么平
+      context.fillStyle = "rgba(218,255,109,.22)";
+      context.fillRect(tile * tileSize, 1, tileSize, 3);
+      for (let index = 0; index < 10; index += 1) {
+        const px = Math.floor(hash(tile * 3 + index, 9) * tileSize);
+        const py = Math.floor(hash(index * 5, tile + 2) * (tileSize - 4)) + 3;
+        context.fillStyle = hash(index, tile + 4) > 0.5 ? "rgba(255,230,90,.2)" : "rgba(40,90,20,.16)";
+        context.fillRect(tile * tileSize + px, py, 1, 1);
+      }
+    }
+    if (block.type === "leaves") {
+      // 叶面加点亮斑，花草装饰时也更有层次
+      for (let index = 0; index < 8; index += 1) {
+        const px = Math.floor(hash(tile * 11 + index, 4) * tileSize);
+        const py = Math.floor(hash(index * 7, tile) * tileSize);
+        context.fillStyle = "rgba(180,255,140,.22)";
+        context.fillRect(tile * tileSize + px, py, 2, 1);
+      }
     }
   });
 
@@ -332,8 +379,9 @@ export function VoxelGame() {
     if (!mount) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x9ed6eb);
-    scene.fog = new THREE.Fog(0x9ed6eb, 42, CHUNK_SIZE * (RENDER_DISTANCE + 0.8));
+    // 背景与雾取地平线浅蓝，上方蓝色层次由天空穹顶负责
+    scene.background = new THREE.Color(SKY_HORIZON);
+    scene.fog = new THREE.Fog(SKY_HORIZON, 42, CHUNK_SIZE * (RENDER_DISTANCE + 0.8));
     const camera = new THREE.PerspectiveCamera(72, 1, 0.05, 100);
     camera.position.set(0, 5 + EYE_HEIGHT, 12);
     camera.lookAt(0, 6, -10);
@@ -361,6 +409,10 @@ export function VoxelGame() {
     const sun = new THREE.DirectionalLight(0xfff0c9, 2.1);
     sun.position.set(25, 35, 18);
     scene.add(sun);
+    // 蓝天白云：独立模块，帧循环内更新，不触发 React 状态
+    const voxelSky = createVoxelSky(scene);
+    // NPC 小方块机器人：独立网格，不进入世界方块与热键栏
+    const worldNpcs = createWorldNpcSystem(scene);
 
     const atlas = createTextureAtlas();
     const worldMaterial = new THREE.MeshLambertMaterial({ map: atlas });
@@ -381,7 +433,8 @@ export function VoxelGame() {
       if (heritageSite !== undefined) return heritageSite;
       const height = terrainHeight(x, z);
       if (y <= height) {
-        if (y === height) return isCentralPlaza(x, z) ? "sand" : "grass";
+        // 广场保持沙地；野外用色块增加地表变化
+        if (y === height) return isCentralPlaza(x, z) ? "sand" : surfaceBlockAt(x, z);
         return y < height - 3 ? "stone" : "dirt";
       }
       if (isTreeCenter(x, z) && y > height && y <= height + 4) return "wood";
@@ -394,12 +447,19 @@ export function VoxelGame() {
           if (y >= treeTop - 2 && y <= treeTop + 1 && dx + dz <= (y === treeTop + 1 ? 1 : 3)) return "leaves";
         }
       }
+      // 树木之后再铺花草，避免盖住树冠逻辑
+      const decor = decorationBlock(x, y, z);
+      if (decor) return decor;
       return null;
     };
     const getBlock = (x: number, y: number, z: number) => {
       const key = keyOf(x, y, z);
       return modifications.has(key) ? modifications.get(key) ?? null : baseBlock(x, y, z);
     };
+    // 世界方块碰撞 + NPC 碰撞盒（NPC 不可步行穿过）
+    const collidesAt = (position: THREE.Vector3) =>
+      hasCollision(getBlock, position) ||
+      worldNpcs.collides(position, EYE_HEIGHT, PLAYER_HEIGHT, PLAYER_RADIUS);
 
     const buildChunk = (chunkX: number, chunkZ: number) => {
       const positions: number[] = [];
@@ -495,13 +555,15 @@ export function VoxelGame() {
       if ((z + 1) % CHUNK_SIZE === 0) dirtyChunks.add(chunkKey(cx, cz + 1));
     };
 
-    // 奖励写入抽到 heritage/world-rewards，坐标与改前保持一致
+    // 奖励写入抽到 heritage/world-rewards，坐标与改前保持一致；跳过 NPC 占用格
+    const writeRewardBlock = (x: number, y: number, z: number, block: BlockType) => {
+      if (worldNpcs.occupiesCell(x, y, z)) return;
+      modifications.set(keyOf(x, y, z), block);
+    };
     const handleHeritageComplete = (event: Event) => {
       applyHeritageReward(
         (event as CustomEvent<HeritageTrack>).detail,
-        (x, y, z, block) => {
-          modifications.set(keyOf(x, y, z), block);
-        },
+        writeRewardBlock,
         markDirtyAt,
       );
     };
@@ -510,9 +572,7 @@ export function VoxelGame() {
     // 刷新后按存档重放已完成技艺的世界奖励，再生成首批区块
     restoreHeritageRewards(
       loadHeritageProgress(),
-      (x, y, z, block) => {
-        modifications.set(keyOf(x, y, z), block);
-      },
+      writeRewardBlock,
       markDirtyAt,
     );
 
@@ -575,6 +635,24 @@ export function VoxelGame() {
       const direction = new THREE.Vector3();
       camera.getWorldDirection(direction);
       currentHit = voxelRaycast(camera.position, direction, getBlock);
+      const npcHit = worldNpcs.raycast(camera.position, direction, REACH);
+      // 若准心更近处是 NPC，优先显示角色名且不把高亮绑到可编辑方块上
+      const blockDistance = currentHit
+        ? Math.hypot(
+            currentHit.x + 0.5 - camera.position.x,
+            currentHit.y + 0.5 - camera.position.y,
+            currentHit.z + 0.5 - camera.position.z,
+          )
+        : Infinity;
+      if (npcHit && npcHit.distance <= blockDistance) {
+        highlight.visible = false;
+        if (npcHit.label !== targetNameRef.current) {
+          targetNameRef.current = npcHit.label;
+          setTargetName(npcHit.label);
+        }
+        currentHit = null;
+        return;
+      }
       highlight.visible = Boolean(currentHit);
       if (currentHit) {
         highlight.position.set(currentHit.x + 0.5, currentHit.y + 0.5, currentHit.z + 0.5);
@@ -592,6 +670,14 @@ export function VoxelGame() {
 
     const interact = (place: boolean) => {
       updateTarget();
+      // 准心落在 NPC 上时禁止交互
+      const direction = new THREE.Vector3();
+      camera.getWorldDirection(direction);
+      const npcHit = worldNpcs.raycast(camera.position, direction, REACH);
+      if (npcHit && !currentHit) {
+        showInteractionNotice("访客与学徒不可破坏或覆盖");
+        return;
+      }
       if (!currentHit) return;
       const target = place
         ? {
@@ -601,10 +687,15 @@ export function VoxelGame() {
           }
         : currentHit;
       const key = keyOf(target.x, target.y, target.z);
+      // NPC 占用格不可破坏，也不可在其格子上放置
+      if (worldNpcs.occupiesCell(target.x, target.y, target.z)) {
+        showInteractionNotice("访客与学徒不可破坏或覆盖");
+        return;
+      }
       if (place) {
         if (getBlock(target.x, target.y, target.z)) return;
         modifications.set(key, BLOCKS[selectedRef.current].type);
-        if (hasCollision(getBlock, camera.position)) modifications.delete(key);
+        if (collidesAt(camera.position)) modifications.delete(key);
       } else if (target.y > 0) modifications.set(key, null);
       markDirtyAt(target.x, target.z);
       gameAudio.play(place ? "place" : "break");
@@ -616,6 +707,11 @@ export function VoxelGame() {
     const velocity = new THREE.Vector3();
     let grounded = false;
     let noticeTimer = 0;
+    const showInteractionNotice = (message: string) => {
+      window.clearTimeout(noticeTimer);
+      setInteractionNotice(message);
+      noticeTimer = window.setTimeout(() => setInteractionNotice(""), 2800);
+    };
     const findNearestWorkshop = () => {
       let nearest: HeritageTrack = "joinery";
       let nearestDistance = Infinity;
@@ -629,11 +725,6 @@ export function VoxelGame() {
         }
       }
       return { track: nearest, distance: nearestDistance };
-    };
-    const showInteractionNotice = (message: string) => {
-      window.clearTimeout(noticeTimer);
-      setInteractionNotice(message);
-      noticeTimer = window.setTimeout(() => setInteractionNotice(""), 2800);
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.code === "KeyH") {
@@ -789,13 +880,13 @@ export function VoxelGame() {
 
         const previousX = camera.position.x;
         camera.position.x += moveDirection.x * 5.4 * delta;
-        if (hasCollision(getBlock, camera.position)) camera.position.x = previousX;
+        if (collidesAt(camera.position)) camera.position.x = previousX;
         const previousZ = camera.position.z;
         camera.position.z += moveDirection.z * 5.4 * delta;
-        if (hasCollision(getBlock, camera.position)) camera.position.z = previousZ;
+        if (collidesAt(camera.position)) camera.position.z = previousZ;
         velocity.y -= 19 * delta;
         camera.position.y += velocity.y * delta;
-        if (hasCollision(getBlock, camera.position)) {
+        if (collidesAt(camera.position)) {
           camera.position.y -= velocity.y * delta;
           grounded = velocity.y < 0;
           velocity.y = 0;
@@ -823,6 +914,8 @@ export function VoxelGame() {
           nearbyWorkshopRef.current = nextWorkshop;
           setNearbyWorkshop(nextWorkshop);
         }
+        // 低频检测氛围区，切换分区 BGM（不触发 React 重渲染）
+        gameAudio.setAmbientZone(resolveAmbientZone(camera.position.x, camera.position.z));
         setDebug({
           fps: Math.round((frameCount * 1000) / (now - statsTime)),
           x: Math.floor(camera.position.x),
@@ -844,6 +937,10 @@ export function VoxelGame() {
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
       }
+      // 云层漂移与穹顶跟随，须在 render 前更新
+      voxelSky.update(camera, delta);
+      // NPC 随机巡逻：传入世界固体查询，避免穿墙穿物
+      worldNpcs.update(delta, (x, y, z) => Boolean(getBlock(x, y, z)));
       renderer.render(scene, camera);
     };
     animate();
@@ -853,6 +950,8 @@ export function VoxelGame() {
       window.clearTimeout(noticeTimer);
       gameAudio.stop();
       controls.disconnect();
+      voxelSky.dispose();
+      worldNpcs.dispose();
       renderer.dispose();
       atlas.dispose();
       worldMaterial.dispose();

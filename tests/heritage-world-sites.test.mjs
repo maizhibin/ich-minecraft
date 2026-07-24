@@ -18,3 +18,12 @@ test("world sites mention kiln, papercut desk and yunjin hall", () => {
   assert.match(sites, /x >= -7 && x <= -3/);
   assert.match(sites, /x >= 45 && x <= 52/);
 });
+
+test("world sites include wooden signposts for kiln, yunjin and papercut", () => {
+  assert.match(sites, /简易木柱路标：窑场入口/);
+  assert.match(sites, /简易木柱路标：织机廊入口/);
+  assert.match(sites, /简易木柱路标：剪纸案旁/);
+  assert.match(sites, /x === 47 && z === 10/);
+  assert.match(sites, /x === 48 && z === -8/);
+  assert.match(sites, /x === -8 && z === 8/);
+});

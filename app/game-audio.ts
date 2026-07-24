@@ -1,3 +1,7 @@
+// 游戏音频：程序化音效 + 分区氛围 BGM（无外部音乐文件）。
+
+import type { AmbientZone } from "./heritage/ambient-zones";
+
 export type GameSound = "place" | "break" | "jump" | "ui" | "craft" | "complete" | "tea" | "shadow";
 
 export type GameAudioStatus = "idle" | "starting" | "running" | "muted" | "unavailable";
@@ -7,6 +11,82 @@ export type GameAudioState = {
   status: GameAudioStatus;
 };
 
+/** 各区域 BGM 音色参数：音阶、间隔、波形与音量略有不同 */
+type AmbientProfile = {
+  scale: number[];
+  intervalMs: number;
+  padVolume: number;
+  sparkleVolume: number;
+  padType: OscillatorType;
+  sparkleType: OscillatorType;
+};
+
+const AMBIENT_PROFILES: Record<AmbientZone, AmbientProfile> = {
+  // 野外：现有五声氛围
+  wild: {
+    scale: [220, 246.94, 293.66, 329.63, 392],
+    intervalMs: 3200,
+    padVolume: 0.09,
+    sparkleVolume: 0.05,
+    padType: "sine",
+    sparkleType: "triangle",
+  },
+  // 博物馆：更低、更疏、偏舒缓
+  museum: {
+    scale: [174.61, 196, 220, 261.63, 293.66],
+    intervalMs: 4200,
+    padVolume: 0.07,
+    sparkleVolume: 0.03,
+    padType: "sine",
+    sparkleType: "sine",
+  },
+  // 茶区：偏高、轻柔
+  tea: {
+    scale: [261.63, 293.66, 329.63, 392, 440],
+    intervalMs: 3600,
+    padVolume: 0.08,
+    sparkleVolume: 0.045,
+    padType: "sine",
+    sparkleType: "triangle",
+  },
+  // 皮影：偏低、带一点方波戏剧感
+  shadow: {
+    scale: [146.83, 164.81, 196, 220, 261.63],
+    intervalMs: 2800,
+    padVolume: 0.085,
+    sparkleVolume: 0.055,
+    padType: "triangle",
+    sparkleType: "square",
+  },
+  // 窑场：中低、沉稳
+  porcelain: {
+    scale: [196, 220, 246.94, 293.66, 329.63],
+    intervalMs: 3800,
+    padVolume: 0.075,
+    sparkleVolume: 0.04,
+    padType: "sine",
+    sparkleType: "triangle",
+  },
+  // 剪纸：更亮、短句更密
+  papercut: {
+    scale: [293.66, 329.63, 392, 440, 523.25],
+    intervalMs: 2600,
+    padVolume: 0.07,
+    sparkleVolume: 0.06,
+    padType: "triangle",
+    sparkleType: "sine",
+  },
+  // 云锦：流畅上行感
+  yunjin: {
+    scale: [220, 246.94, 277.18, 329.63, 369.99],
+    intervalMs: 3400,
+    padVolume: 0.08,
+    sparkleVolume: 0.05,
+    padType: "sine",
+    sparkleType: "triangle",
+  },
+};
+
 export function createGameAudio(onStateChange: (state: GameAudioState) => void) {
   let context: AudioContext | null = null;
   let masterGain: GainNode | null = null;
@@ -14,6 +94,7 @@ export function createGameAudio(onStateChange: (state: GameAudioState) => void) 
   let sfxGain: GainNode | null = null;
   let ambientTimer = 0;
   let ambientStep = 0;
+  let ambientZone: AmbientZone = "wild";
   let enabled = true;
   let status: GameAudioStatus = "idle";
   let playedActivationSound = false;
@@ -71,13 +152,66 @@ export function createGameAudio(onStateChange: (state: GameAudioState) => void) 
 
   const scheduleAmbientPhrase = () => {
     if (!context || !bgmGain || !enabled || context.state !== "running") return;
-    const scale = [220, 246.94, 293.66, 329.63, 392];
+    const profile = AMBIENT_PROFILES[ambientZone];
+    const scale = profile.scale;
     const root = scale[ambientStep % scale.length];
-    tone(root, 2.8, 0.09, "sine", bgmGain);
-    tone(root * 2, 1.1, 0.06, "triangle", bgmGain, 0.18);
-    tone(scale[(ambientStep + 2) % scale.length], 0.9, 0.05, "triangle", bgmGain, 0.82);
-    tone(scale[(ambientStep + 4) % scale.length] * 2, 0.35, 0.03, "sine", bgmGain, 1.48);
+    // 皮影区：根音更长、点缀更短，偏戏剧
+    if (ambientZone === "shadow") {
+      tone(root, 2.2, profile.padVolume, profile.padType, bgmGain);
+      tone(root * 1.5, 0.55, profile.sparkleVolume, profile.sparkleType, bgmGain, 0.35);
+      tone(scale[(ambientStep + 3) % scale.length], 0.7, profile.sparkleVolume * 0.9, "triangle", bgmGain, 1.0);
+    } else if (ambientZone === "museum") {
+      // 舒缓：长垫音 + 稀疏泛音
+      tone(root, 3.6, profile.padVolume, profile.padType, bgmGain);
+      tone(root * 2, 2.0, profile.sparkleVolume, profile.sparkleType, bgmGain, 0.6);
+      tone(scale[(ambientStep + 2) % scale.length], 1.4, profile.sparkleVolume * 0.7, "sine", bgmGain, 1.8);
+    } else if (ambientZone === "papercut") {
+      // 更轻快的短句
+      tone(root, 1.4, profile.padVolume, profile.padType, bgmGain);
+      tone(scale[(ambientStep + 1) % scale.length], 0.45, profile.sparkleVolume, profile.sparkleType, bgmGain, 0.2);
+      tone(scale[(ambientStep + 3) % scale.length], 0.4, profile.sparkleVolume, "sine", bgmGain, 0.55);
+      tone(scale[(ambientStep + 4) % scale.length] * 2, 0.28, profile.sparkleVolume * 0.8, "triangle", bgmGain, 0.95);
+    } else if (ambientZone === "yunjin") {
+      // 上行织纹感
+      tone(root, 2.4, profile.padVolume, profile.padType, bgmGain);
+      tone(scale[(ambientStep + 1) % scale.length], 0.8, profile.sparkleVolume, profile.sparkleType, bgmGain, 0.35);
+      tone(scale[(ambientStep + 2) % scale.length], 0.8, profile.sparkleVolume, profile.sparkleType, bgmGain, 0.85);
+      tone(scale[(ambientStep + 4) % scale.length], 1.0, profile.sparkleVolume * 0.85, "sine", bgmGain, 1.4);
+    } else {
+      // wild / tea / porcelain 共用清晰五声短语，音阶与节奏由 profile 区分
+      tone(root, ambientZone === "tea" ? 3.0 : 2.8, profile.padVolume, profile.padType, bgmGain);
+      tone(root * 2, ambientZone === "tea" ? 1.3 : 1.1, profile.sparkleVolume, profile.sparkleType, bgmGain, 0.18);
+      tone(scale[(ambientStep + 2) % scale.length], 0.9, profile.sparkleVolume, profile.sparkleType, bgmGain, 0.82);
+      tone(scale[(ambientStep + 4) % scale.length] * 2, 0.35, profile.sparkleVolume * 0.65, "sine", bgmGain, 1.48);
+    }
     ambientStep += 1;
+  };
+
+  const restartAmbientTimer = () => {
+    window.clearInterval(ambientTimer);
+    ambientTimer = 0;
+    if (!enabled || !context || context.state !== "running") return;
+    const profile = AMBIENT_PROFILES[ambientZone];
+    scheduleAmbientPhrase();
+    ambientTimer = window.setInterval(scheduleAmbientPhrase, profile.intervalMs);
+  };
+
+  /**
+   * 玩家进入不同非遗区域时切换 BGM 风格。
+   * 同区不重复切换；切换时轻微淡入淡出，不写 React state。
+   */
+  const setAmbientZone = (zone: AmbientZone) => {
+    if (zone === ambientZone) return;
+    ambientZone = zone;
+    ambientStep = 0;
+    if (!context || !bgmGain || context.state !== "running" || !enabled) return;
+    const now = context.currentTime;
+    // 短交叉淡化，避免硬切
+    bgmGain.gain.cancelScheduledValues(now);
+    bgmGain.gain.setValueAtTime(bgmGain.gain.value, now);
+    bgmGain.gain.linearRampToValueAtTime(0.04, now + 0.18);
+    bgmGain.gain.linearRampToValueAtTime(0.28, now + 0.55);
+    restartAmbientTimer();
   };
 
   const playNoise = () => {
@@ -145,10 +279,7 @@ export function createGameAudio(onStateChange: (state: GameAudioState) => void) 
       masterGain?.gain.setTargetAtTime(0.82, audioContext.currentTime, 0.02);
       status = "running";
       const state = emitState();
-      if (!ambientTimer) {
-        scheduleAmbientPhrase();
-        ambientTimer = window.setInterval(scheduleAmbientPhrase, 3200);
-      }
+      if (!ambientTimer) restartAmbientTimer();
       if (!playedActivationSound) {
         playedActivationSound = true;
         tone(523.25, 0.14, 0.13, "sine", sfxGain!);
@@ -189,5 +320,5 @@ export function createGameAudio(onStateChange: (state: GameAudioState) => void) 
     sfxGain = null;
   };
 
-  return { start, play, toggle, stop };
+  return { start, play, toggle, stop, setAmbientZone };
 }
