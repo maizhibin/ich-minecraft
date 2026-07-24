@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createNoise2D } from "simplex-noise";
 import * as THREE from "three";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
-import { createGameAudio, type GameSound } from "./game-audio";
+import { createGameAudio, type GameAudioState, type GameSound } from "./game-audio";
 import { HeritageWorkshop, type HeritageTrack } from "./heritage-workshop";
 
 type BlockType = "grass" | "dirt" | "stone" | "sand" | "wood" | "leaves";
@@ -310,7 +310,7 @@ export function VoxelGame() {
   const [heritageTrack, setHeritageTrack] = useState<HeritageTrack>("joinery");
   const [nearbyWorkshop, setNearbyWorkshop] = useState<HeritageTrack | null>(null);
   const [interactionNotice, setInteractionNotice] = useState("");
-  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [audioState, setAudioState] = useState<GameAudioState>({ enabled: true, status: "idle" });
   const [heritageCompleted, setHeritageCompleted] = useState<Record<HeritageTrack, boolean>>({
     joinery: false,
     printing: false,
@@ -349,12 +349,17 @@ export function VoxelGame() {
     renderer.shadowMap.enabled = true;
     renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
     mount.appendChild(renderer.domElement);
-    const gameAudio = createGameAudio(setAudioEnabled);
+    const gameAudio = createGameAudio(setAudioState);
+    const reportAudioState = (state: GameAudioState) => {
+      if (state.status === "unavailable") {
+        setInteractionNotice("浏览器未能启动音频，请检查标签页静音和系统输出设备");
+      }
+    };
     const handleGameSound = (event: Event) => {
       gameAudio.play((event as CustomEvent<GameSound>).detail);
     };
     const handleAudioToggle = () => {
-      void gameAudio.toggle();
+      void gameAudio.toggle().then(reportAudioState);
     };
     window.addEventListener("game-sound", handleGameSound);
     window.addEventListener("game-audio-toggle", handleAudioToggle);
@@ -565,7 +570,7 @@ export function VoxelGame() {
       setStarted(false);
     });
     startRef.current = () => {
-      void gameAudio.start();
+      void gameAudio.start().then(reportAudioState);
       if (matchMedia("(pointer: coarse)").matches) {
         active = true;
         setStarted(true);
@@ -573,8 +578,10 @@ export function VoxelGame() {
       } else controls.lock();
     };
     const openHeritagePanel = (track: HeritageTrack = nearbyWorkshopRef.current ?? "joinery") => {
-      void gameAudio.start();
-      gameAudio.play("ui");
+      void gameAudio.start().then((state) => {
+        reportAudioState(state);
+        if (state.status === "running") gameAudio.play("ui");
+      });
       active = false;
       if (controls.isLocked) controls.unlock();
       setHeritageTrack(track);
@@ -908,6 +915,20 @@ export function VoxelGame() {
 
   const action = (type: "place" | "break" | "jump") =>
     window.dispatchEvent(new CustomEvent("voxel-action", { detail: type }));
+  const audioLabel = audioState.status === "idle"
+    ? "声音 待启用"
+    : audioState.status === "starting"
+      ? "声音 启动中"
+      : audioState.status === "running"
+        ? "声音 ON"
+        : audioState.status === "muted"
+          ? "声音 OFF"
+          : "声音不可用";
+  const audioActionLabel = audioState.status === "running"
+    ? "关闭背景音乐和音效"
+    : audioState.status === "muted"
+      ? "开启背景音乐和音效"
+      : "启动并测试背景音乐和音效";
 
   return (
     <main className="game-shell">
@@ -926,10 +947,11 @@ export function VoxelGame() {
       <button
         className="audio-toggle"
         onClick={() => window.dispatchEvent(new CustomEvent("game-audio-toggle"))}
-        aria-pressed={!audioEnabled}
-        aria-label={audioEnabled ? "关闭背景音乐和音效" : "开启背景音乐和音效"}
+        aria-pressed={audioState.status === "running"}
+        aria-label={audioActionLabel}
+        title={audioState.status === "idle" ? "点击后会播放两声测试提示音" : audioActionLabel}
       >
-        {audioEnabled ? "声音 ON" : "声音 OFF"}
+        {audioLabel}
       </button>
 
       <aside className="debug-panel" aria-label="调试信息">

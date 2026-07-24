@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "COZE Blocklands",
+  title: "Intangible Cultural Heritage Blocklands",
   description: "探索、建造与破坏随机生成的 3D 像素方块世界。",
   icons: {
     icon: "/favicon.svg",

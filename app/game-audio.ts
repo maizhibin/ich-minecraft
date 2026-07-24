@@ -1,6 +1,13 @@
 export type GameSound = "place" | "break" | "jump" | "ui" | "craft" | "complete" | "tea" | "shadow";
 
-export function createGameAudio(onEnabledChange: (enabled: boolean) => void) {
+export type GameAudioStatus = "idle" | "starting" | "running" | "muted" | "unavailable";
+
+export type GameAudioState = {
+  enabled: boolean;
+  status: GameAudioStatus;
+};
+
+export function createGameAudio(onStateChange: (state: GameAudioState) => void) {
   let context: AudioContext | null = null;
   let masterGain: GainNode | null = null;
   let bgmGain: GainNode | null = null;
@@ -8,16 +15,27 @@ export function createGameAudio(onEnabledChange: (enabled: boolean) => void) {
   let ambientTimer = 0;
   let ambientStep = 0;
   let enabled = true;
+  let status: GameAudioStatus = "idle";
+  let playedActivationSound = false;
+
+  const emitState = () => {
+    const state = { enabled, status };
+    onStateChange(state);
+    return state;
+  };
 
   const ensureContext = () => {
     if (context) return context;
-    context = new AudioContext();
+    if (typeof AudioContext === "undefined") {
+      throw new Error("当前浏览器不支持 Web Audio API");
+    }
+    context = new AudioContext({ latencyHint: "interactive" });
     masterGain = context.createGain();
     bgmGain = context.createGain();
     sfxGain = context.createGain();
-    masterGain.gain.value = enabled ? 0.7 : 0;
-    bgmGain.gain.value = 0.16;
-    sfxGain.gain.value = 0.42;
+    masterGain.gain.value = enabled ? 0.82 : 0;
+    bgmGain.gain.value = 0.28;
+    sfxGain.gain.value = 0.68;
     bgmGain.connect(masterGain);
     sfxGain.connect(masterGain);
     masterGain.connect(context.destination);
@@ -52,23 +70,14 @@ export function createGameAudio(onEnabledChange: (enabled: boolean) => void) {
   };
 
   const scheduleAmbientPhrase = () => {
-    if (!context || !bgmGain || !enabled) return;
+    if (!context || !bgmGain || !enabled || context.state !== "running") return;
     const scale = [220, 246.94, 293.66, 329.63, 392];
     const root = scale[ambientStep % scale.length];
-    tone(root / 2, 2.8, 0.08, "sine", bgmGain);
-    tone(root, 1.1, 0.055, "triangle", bgmGain, 0.18);
-    tone(scale[(ambientStep + 2) % scale.length], 0.9, 0.04, "triangle", bgmGain, 0.82);
-    tone(scale[(ambientStep + 4) % scale.length] * 2, 0.35, 0.018, "sine", bgmGain, 1.48);
+    tone(root, 2.8, 0.09, "sine", bgmGain);
+    tone(root * 2, 1.1, 0.06, "triangle", bgmGain, 0.18);
+    tone(scale[(ambientStep + 2) % scale.length], 0.9, 0.05, "triangle", bgmGain, 0.82);
+    tone(scale[(ambientStep + 4) % scale.length] * 2, 0.35, 0.03, "sine", bgmGain, 1.48);
     ambientStep += 1;
-  };
-
-  const start = async () => {
-    const audioContext = ensureContext();
-    if (audioContext.state === "suspended") await audioContext.resume();
-    if (!ambientTimer) {
-      scheduleAmbientPhrase();
-      ambientTimer = window.setInterval(scheduleAmbientPhrase, 3200);
-    }
   };
 
   const playNoise = () => {
@@ -82,7 +91,7 @@ export function createGameAudio(onEnabledChange: (enabled: boolean) => void) {
     const source = context.createBufferSource();
     const filter = context.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.value = 850;
+    filter.frequency.value = 1100;
     source.buffer = buffer;
     source.connect(filter);
     filter.connect(sfxGain);
@@ -94,39 +103,80 @@ export function createGameAudio(onEnabledChange: (enabled: boolean) => void) {
   };
 
   const play = (sound: GameSound) => {
-    if (!enabled || !context || !sfxGain || context.state !== "running") return;
+    if (!enabled || !context || !sfxGain || context.state !== "running") return false;
     if (sound === "break") {
       playNoise();
-      tone(105, 0.13, 0.13, "square", sfxGain);
+      tone(105, 0.13, 0.2, "square", sfxGain);
     } else if (sound === "place") {
-      tone(145, 0.1, 0.11, "triangle", sfxGain);
-      tone(110, 0.12, 0.07, "sine", sfxGain, 0.04);
+      tone(145, 0.1, 0.18, "triangle", sfxGain);
+      tone(110, 0.12, 0.12, "sine", sfxGain, 0.04);
     } else if (sound === "jump") {
-      tone(220, 0.16, 0.08, "sine", sfxGain);
-      tone(330, 0.16, 0.06, "sine", sfxGain, 0.07);
+      tone(220, 0.16, 0.14, "sine", sfxGain);
+      tone(330, 0.16, 0.11, "sine", sfxGain, 0.07);
     } else if (sound === "complete") {
       [261.63, 329.63, 392, 523.25].forEach((frequency, index) =>
-        tone(frequency, 0.45, 0.08, "triangle", sfxGain!, index * 0.12),
+        tone(frequency, 0.45, 0.14, "triangle", sfxGain!, index * 0.12),
       );
     } else if (sound === "tea") {
-      tone(523.25, 0.3, 0.045, "sine", sfxGain);
-      tone(659.25, 0.35, 0.035, "sine", sfxGain, 0.13);
+      tone(523.25, 0.3, 0.1, "sine", sfxGain);
+      tone(659.25, 0.35, 0.08, "sine", sfxGain, 0.13);
     } else if (sound === "shadow") {
-      tone(164.81, 0.22, 0.08, "triangle", sfxGain);
-      tone(246.94, 0.32, 0.055, "square", sfxGain, 0.1);
+      tone(164.81, 0.22, 0.15, "triangle", sfxGain);
+      tone(246.94, 0.32, 0.1, "square", sfxGain, 0.1);
     } else {
-      tone(sound === "craft" ? 360 : 440, 0.08, 0.045, "sine", sfxGain);
+      tone(sound === "craft" ? 360 : 523.25, 0.11, 0.12, "sine", sfxGain);
+    }
+    return true;
+  };
+
+  const start = async () => {
+    if (!enabled) {
+      status = "muted";
+      return emitState();
+    }
+    status = "starting";
+    emitState();
+    try {
+      const audioContext = ensureContext();
+      if (audioContext.state === "suspended") await audioContext.resume();
+      if (audioContext.state !== "running") {
+        throw new Error(`音频上下文未能启动：${audioContext.state}`);
+      }
+      masterGain?.gain.setTargetAtTime(0.82, audioContext.currentTime, 0.02);
+      status = "running";
+      const state = emitState();
+      if (!ambientTimer) {
+        scheduleAmbientPhrase();
+        ambientTimer = window.setInterval(scheduleAmbientPhrase, 3200);
+      }
+      if (!playedActivationSound) {
+        playedActivationSound = true;
+        tone(523.25, 0.14, 0.13, "sine", sfxGain!);
+        tone(659.25, 0.2, 0.11, "triangle", sfxGain!, 0.1);
+      }
+      return state;
+    } catch (error) {
+      console.warn("游戏音频启动失败", error);
+      status = "unavailable";
+      return emitState();
     }
   };
 
   const toggle = async () => {
-    enabled = !enabled;
-    const audioContext = ensureContext();
-    if (enabled && audioContext.state === "suspended") await audioContext.resume();
-    masterGain?.gain.setTargetAtTime(enabled ? 0.7 : 0, audioContext.currentTime, 0.025);
-    onEnabledChange(enabled);
-    if (enabled) scheduleAmbientPhrase();
-    return enabled;
+    if (!context || status === "idle" || status === "unavailable") {
+      enabled = true;
+      return start();
+    }
+    if (enabled) {
+      enabled = false;
+      status = "muted";
+      masterGain?.gain.setTargetAtTime(0, context.currentTime, 0.02);
+      return emitState();
+    }
+    enabled = true;
+    const state = await start();
+    if (state.status === "running") play("ui");
+    return state;
   };
 
   const stop = () => {
@@ -134,6 +184,9 @@ export function createGameAudio(onEnabledChange: (enabled: boolean) => void) {
     ambientTimer = 0;
     if (context && context.state !== "closed") void context.close();
     context = null;
+    masterGain = null;
+    bgmGain = null;
+    sfxGain = null;
   };
 
   return { start, play, toggle, stop };

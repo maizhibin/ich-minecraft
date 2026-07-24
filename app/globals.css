@@ -49,7 +49,7 @@ kbd { display: inline-block; min-width: 52px; color: white; font-family: inherit
 .heritage-launcher span { display: grid; width: 20px; height: 20px; place-items: center; background: var(--accent); color: #151912; font-weight: 800; }
 .heritage-launcher b { color: var(--accent); font-weight: 500; }
 .audio-toggle { position: absolute; z-index: 7; top: 122px; right: 26px; padding: 8px 10px; border: 1px solid #ffffff2c; background: #11160fb8; color: #ffffffb8; font-size: 9px; cursor: pointer; backdrop-filter: blur(8px); }
-.audio-toggle[aria-pressed="true"] { color: #ffffff69; border-style: dashed; }
+.audio-toggle[aria-pressed="false"] { color: #ffffff69; border-style: dashed; }
 .heritage-dialog { position: absolute; z-index: 20; top: 50%; left: 50%; display: grid; grid-template-columns: 190px minmax(0, 1fr); grid-template-rows: auto auto 1fr auto; width: min(820px, calc(100% - 36px)); max-height: min(760px, calc(100% - 36px)); overflow: auto; transform: translate(-50%, -50%); border: 1px solid #ffffff3d; background: linear-gradient(145deg, rgba(16, 20, 15, .98), rgba(31, 35, 25, .98)); box-shadow: 14px 14px 0 #070907a8; backdrop-filter: blur(18px); }
 .heritage-header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: flex-start; padding: 24px 26px 20px; border-bottom: 1px solid #ffffff1f; }
 .heritage-header .eyebrow { color: var(--accent); font-size: 9px; letter-spacing: .16em; }
